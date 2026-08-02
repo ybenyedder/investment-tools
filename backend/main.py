@@ -53,7 +53,8 @@ ASSET_UNIVERSE = {
         "India & Emerging": ["RELIANCE.NS", "TCS.NS", "INFY", "HDB"],
     },
     "Funds & Commodities": {
-        "Global ETFs": ["SPY", "QQQ", "VGK", "VWO", "INDA", "MCHI", "EWJ", "EWU"],
+        "Global & Regional ETFs": ["SPY", "QQQ", "VGK", "VWO", "INDA", "MCHI", "EWJ", "EWU"],
+        "World ETFs": ["VT", "ACWI", "URTH", "VXUS", "VEU", "IOO"],
         "Commodities": ["GLD", "SLV", "USO", "UNG", "CPER"],
     }
 }
