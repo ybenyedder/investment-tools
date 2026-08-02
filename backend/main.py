@@ -56,6 +56,15 @@ ASSET_UNIVERSE = {
     }
 }
 
+try:
+    # Dynamically fetch S&P 500 from Wikipedia
+    sp500_table = pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')[0]
+    sp500_tickers = sp500_table['Symbol'].tolist()
+    sp500_tickers = [t.replace('.', '-') for t in sp500_tickers] # format for yfinance
+    ASSET_UNIVERSE["US Markets (NASDAQ & NYSE)"]["S&P 500"] = sp500_tickers
+except Exception:
+    pass
+
 @app.get("/api/universe")
 def get_universe():
     return ASSET_UNIVERSE
@@ -277,7 +286,14 @@ def analyze_assets(
             "sam_b": sam / 1e9,
             "som_b": som / 1e9,
             "highest_corr_ticker": highest_corr_ticker,
-            "highest_corr_value": highest_corr_value
+            "highest_corr_value": highest_corr_value,
+            "peg_ratio": ticker_info.get("pegRatio"),
+            "return_on_equity": ticker_info.get("returnOnEquity"),
+            "debt_to_equity": ticker_info.get("debtToEquity"),
+            "profit_margin": ticker_info.get("profitMargins"),
+            "operating_margin": ticker_info.get("operatingMargins"),
+            "free_cash_flow": ticker_info.get("freeCashflow"),
+            "total_debt": ticker_info.get("totalDebt")
         })
     
     # 4. Rank by selected Quantitative Method

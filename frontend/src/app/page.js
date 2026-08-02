@@ -204,6 +204,11 @@ export default function Home() {
                   <th style={{ padding: '0.5rem' }}>RL Acc (Past)</th>
                   <th style={{ padding: '0.5rem' }}>Correlated Asset</th>
                   <th style={{ padding: '0.5rem' }}>SOM/SAM/TAM ($B)</th>
+                  <th style={{ padding: '0.5rem' }}>PEG</th>
+                  <th style={{ padding: '0.5rem' }}>ROE</th>
+                  <th style={{ padding: '0.5rem' }}>DTI (Debt/Eq)</th>
+                  <th style={{ padding: '0.5rem' }}>Margins (Prof/Op)</th>
+                  <th style={{ padding: '0.5rem' }}>FCF/Debt ($B)</th>
                   <th style={{ padding: '0.5rem' }}>1Y {stochasticModel === 'bs' ? 'BS' : 'Bachelier'} Min/Max</th>
                 </tr>
               </thead>
@@ -229,7 +234,16 @@ export default function Home() {
                     <td style={{ padding: '0.5rem' }}>{item.rl_backtest_accuracy ? `${item.rl_backtest_accuracy.toFixed(0)}%` : 'N/A'}</td>
                     <td style={{ padding: '0.5rem' }} title={`Corr: ${item.highest_corr_value?.toFixed(2)}`}>{item.highest_corr_ticker}</td>
                     <td style={{ padding: '0.5rem', fontSize: '0.9em' }}>{item.som_b?.toFixed(1)} / {item.sam_b?.toFixed(1)} / {item.tam_b?.toFixed(1)}</td>
-                    <td style={{ padding: '0.5rem' }}>
+                    <td style={{ padding: '0.5rem' }}>{item.peg_ratio ? item.peg_ratio.toFixed(2) : 'N/A'}</td>
+                    <td style={{ padding: '0.5rem' }}>{item.return_on_equity ? (item.return_on_equity * 100).toFixed(1) + '%' : 'N/A'}</td>
+                    <td style={{ padding: '0.5rem' }}>{item.debt_to_equity ? item.debt_to_equity.toFixed(1) + '%' : 'N/A'}</td>
+                    <td style={{ padding: '0.5rem', fontSize: '0.9em' }}>
+                      {item.profit_margin ? (item.profit_margin * 100).toFixed(1) + '%' : 'N/A'} / {item.operating_margin ? (item.operating_margin * 100).toFixed(1) + '%' : 'N/A'}
+                    </td>
+                    <td style={{ padding: '0.5rem', fontSize: '0.9em' }}>
+                      {item.free_cash_flow ? (item.free_cash_flow / 1e9).toFixed(1) : 'N/A'} / {item.total_debt ? (item.total_debt / 1e9).toFixed(1) : 'N/A'}
+                    </td>
+                    <td style={{ padding: '0.5rem', fontSize: '0.9em' }}>
                       {stochasticModel === 'bs' ? (
                         `${item.bs_min_1y_estimation ? `$${item.bs_min_1y_estimation.toFixed(2)}` : 'N/A'} - ${item.bs_max_1y_estimation ? `$${item.bs_max_1y_estimation.toFixed(2)}` : 'N/A'}`
                       ) : (
