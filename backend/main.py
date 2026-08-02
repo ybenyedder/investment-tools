@@ -8,14 +8,22 @@ from typing import List
 import warnings
 warnings.filterwarnings('ignore')
 
+import os
+
 app = FastAPI(title="Investment Analysis API")
 
-# Enable CORS for frontend
+# Secure CORS: Allow specific origins (localhost for dev, and production URL)
+ALLOWED_ORIGINS = os.getenv(
+    "ALLOWED_ORIGINS", 
+    "http://localhost:3000,https://stock.webtvmedia.net"
+).split(",")
+
+# Enable CORS for frontend securely
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST"], # Restricted from "*" to specific methods
     allow_headers=["*"],
 )
 

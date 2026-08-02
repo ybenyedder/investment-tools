@@ -10,7 +10,8 @@ export default function Home() {
   const [universe, setUniverse] = useState({});
 
   useEffect(() => {
-    fetch(process.env.NEXT_PUBLIC_API_URL + '/api/universe' || 'http://localhost:8000/api/universe')
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    fetch(`${apiUrl}/api/universe`)
       .then(res => res.json())
       .then(data => setUniverse(data))
       .catch(console.error);
@@ -21,7 +22,8 @@ export default function Home() {
     try {
       const tickerList = tickers.split(',').map(t => t.trim()).filter(Boolean);
       const query = tickerList.map(t => `tickers=${t}`).join('&');
-      const res = await fetch(`http://localhost:8000/api/analyze?${query}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const res = await fetch(`${apiUrl}/api/analyze?${query}`, {
         method: 'POST'
       });
       const json = await res.json();
