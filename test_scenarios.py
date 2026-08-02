@@ -15,16 +15,20 @@ def test_scenario(name, tickers):
         data = response.json()
         
         top_10 = data.get("top_10", [])
-        print(f"{'Rank':<5} | {'Ticker':<6} | {'Exp. Return':<12} | {'Risk (Vol)':<12} | {'Sharpe':<8} | {'Analyst Target':<15}")
-        print("-" * 75)
+        print(f"{'Rank':<5} | {'Ticker':<6} | {'Exp. Return':<12} | {'Risk (Vol)':<12} | {'Sharpe':<8} | {'1Y BS Min':<10} | {'1Y BS Max':<10} | {'Analyst Target':<15}")
+        print("-" * 105)
         for idx, asset in enumerate(top_10, 1):
             exp_return = asset.get('historical_expected_return', 0) * 100
             risk = asset.get('volatility_risk', 0) * 100
             sharpe = asset.get('sharpe_ratio', 0)
             target = asset.get('analyst_target_price')
             target_str = f"${target:.2f}" if target else "N/A"
+            bs_min = asset.get('bs_min_1y_estimation')
+            bs_max = asset.get('bs_max_1y_estimation')
+            bs_min_str = f"${bs_min:.2f}" if bs_min else "N/A"
+            bs_max_str = f"${bs_max:.2f}" if bs_max else "N/A"
             
-            print(f"{idx:<5} | {asset['ticker']:<6} | {exp_return:>8.2f}%   | {risk:>8.2f}%   | {sharpe:>6.2f}   | {target_str:<15}")
+            print(f"{idx:<5} | {asset['ticker']:<6} | {exp_return:>8.2f}%   | {risk:>8.2f}%   | {sharpe:>6.2f}   | {bs_min_str:<10} | {bs_max_str:<10} | {target_str:<15}")
             
     except Exception as e:
         print(f"Error testing scenario: {e}")

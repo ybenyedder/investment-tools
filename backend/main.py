@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import yfinance as yf
 import pandas as pd
 import numpy as np
+import math
 from pypfopt import expected_returns, risk_models
 from typing import List
 import warnings
@@ -98,6 +99,15 @@ def analyze_assets(tickers: List[str] = Query(default=["AAPL", "MSFT"])):
         # CAPM Cost of Equity
         cost_of_equity = risk_free_rate + beta * (market_return - risk_free_rate)
         
+        # Black-Scholes / Geometric Brownian Motion 1-Year Min/Max Estimation (95% Confidence)
+        bs_min_1y = None
+        bs_max_1y = None
+        if current_price and current_price > 0 and risk > 0:
+            drift = exp_return - 0.5 * (risk ** 2)
+            diffusion = 1.96 * risk # 1.96 standard deviations for 95% CI
+            bs_min_1y = current_price * math.exp(drift - diffusion)
+            bs_max_1y = current_price * math.exp(drift + diffusion)
+        
         results.append({
             "ticker": ticker,
             "name": ticker_info.get("shortName", ticker),
@@ -111,6 +121,8 @@ def analyze_assets(tickers: List[str] = Query(default=["AAPL", "MSFT"])):
             "analyst_expected_return": analyst_upside,
             "beta": beta,
             "capm_cost_of_equity": cost_of_equity,
+            "bs_min_1y_estimation": bs_min_1y,
+            "bs_max_1y_estimation": bs_max_1y,
         })
     
     # 4. Rank by Sharpe Ratio (Risk vs Expectation)
