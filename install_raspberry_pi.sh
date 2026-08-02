@@ -143,12 +143,15 @@ sudo ln -sf /etc/nginx/sites-available/$DOMAIN /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t && sudo systemctl restart nginx
 
-# 7. Setup SSL Certificate (Certbot)
-echo "[7/8] Requesting SSL Certificate (Requires Domain to be pointed to this Pi's IP)..."
-echo "NOTE: If this fails, ensure your DNS for $DOMAIN points to your public IP and ports 80/443 are forwarded!"
-# We use --non-interactive but it requires an email, so we skip standard strict certbot and let the user run it manually if they prefer.
-echo "Run the following command manually later to secure with HTTPS:"
-echo "sudo certbot --nginx -d $DOMAIN"
+# 7. Setup SSL Certificate (Cloudflare Mode)
+echo "[7/8] Cloudflare SSL Configuration..."
+echo "Since you are using Cloudflare, you have two great options to secure your site:"
+echo "Option A (Cloudflare Tunnels - HIGHLY RECOMMENDED):"
+echo "   You do NOT need to port-forward your router. Install 'cloudflared' on this Pi,"
+echo "   authenticate, and route traffic securely to localhost:80."
+echo "Option B (Cloudflare Proxy):"
+echo "   Ensure your Cloudflare SSL/TLS encryption mode is set to 'Flexible' (no certbot needed) "
+echo "   or 'Full' (you can generate a Cloudflare Origin Pull Certificate and place it in Nginx)."
 
 # 8. Verification & Health Check
 echo "[8/8] Verifying internal services..."
@@ -171,8 +174,13 @@ echo " - sudo systemctl status investment-backend"
 echo " - sudo systemctl status investment-frontend"
 echo " - sudo systemctl status nginx"
 echo ""
-echo "Next Steps:"
-echo "1. Ensure $DOMAIN points to your home public IP (A Record)."
-echo "2. Port forward 80 and 443 on your router to this Raspberry Pi."
-echo "3. Run 'sudo certbot --nginx -d $DOMAIN' to enable HTTPS."
+echo "☁️  Cloudflare Next Steps:"
+echo "1. If using Cloudflare Tunnels (Best for Pi):"
+echo "   Run: curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64.deb"
+echo "   Run: sudo dpkg -i cloudflared.deb"
+echo "   Run: cloudflared tunnel login"
+echo "   Create a tunnel and route $DOMAIN to http://localhost:80"
+echo "2. If using standard Cloudflare DNS Proxying:"
+echo "   - Port forward port 80 on your router to this Pi."
+echo "   - In your Cloudflare Dashboard, set SSL/TLS to 'Flexible'."
 echo "============================================================"
