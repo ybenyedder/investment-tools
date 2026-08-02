@@ -79,3 +79,37 @@ def test_analyze_assets_black_scholes():
         assert bs_min is not None
         assert bs_max is not None
         assert bs_min < bs_max
+
+def test_analyze_assets_quantitative_method():
+    """Test that changing the quant method changes the sorting of the top 10 results."""
+    # Test Treynor
+    res_treynor = client.post("/api/analyze?tickers=AAPL&tickers=MSFT&tickers=TSLA&quant_method=treynor")
+    data_treynor = res_treynor.json()["top_10"]
+    assert "treynor_ratio" in data_treynor[0]
+    
+    # Check it's actually sorted by treynor
+    if len(data_treynor) > 1:
+        assert data_treynor[0]["treynor_ratio"] >= data_treynor[1]["treynor_ratio"]
+
+def test_analyze_assets_ai_and_advanced_metrics():
+    """Test that RL Backtest, TAM/SAM/SOM, Correlation, and SARIMA are returned."""
+    response = client.post("/api/analyze?tickers=MSFT")
+    assert response.status_code == 200
+    data = response.json()
+    msft_data = data["analysis"][0]
+    
+    # AI Models
+    assert "sarima_1y_forecast" in msft_data
+    assert "rl_action" in msft_data
+    assert "rl_backtest_accuracy" in msft_data
+    
+    # Advanced Metrics
+    assert "highest_corr_ticker" in msft_data
+    assert "highest_corr_value" in msft_data
+    assert "tam_b" in msft_data
+    assert "sam_b" in msft_data
+    assert "som_b" in msft_data
+    
+    # Check data sanity
+    assert msft_data["rl_backtest_accuracy"] >= 0
+    assert msft_data["tam_b"] >= 0

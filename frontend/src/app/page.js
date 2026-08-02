@@ -9,6 +9,7 @@ export default function Home() {
   const [tickers, setTickers] = useState("AAPL,MSFT,TSLA,SPY,GLD");
   const [quantMethod, setQuantMethod] = useState("sharpe");
   const [universe, setUniverse] = useState({});
+  const btnStyle = { padding: '0.4rem 0.8rem', backgroundColor: '#e2e8f0', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9em' };
 
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -41,6 +42,12 @@ export default function Home() {
       
       <div style={{ marginBottom: '2rem', padding: '1rem', backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
         <h3>Select Tickers and Quantitative Method</h3>
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+          <button onClick={() => setTickers("AAPL,MSFT,TSLA,SPY,GLD")} style={btnStyle}>Default</button>
+          <button onClick={() => setTickers("NVDA,AMD,INTC,TSM,ASML")} style={btnStyle}>AI / Semiconductors</button>
+          <button onClick={() => setTickers("FLNC,ENPH,SEDG,TSLA,ALB")} style={btnStyle}>Power Storage</button>
+          <button onClick={() => setTickers("SPY,VGK,VWO,INDA,MCHI")} style={btnStyle}>Global ETFs</button>
+        </div>
         <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', marginBottom: '1rem' }}>
           <input 
             type="text" 
@@ -87,9 +94,10 @@ export default function Home() {
                   <th style={{ padding: '0.5rem' }}>Treynor</th>
                   <th style={{ padding: '0.5rem' }}>1Y SARIMA</th>
                   <th style={{ padding: '0.5rem' }}>RL Agent Action</th>
-                  <th style={{ padding: '0.5rem' }}>1Y BS Min</th>
-                  <th style={{ padding: '0.5rem' }}>1Y BS Max</th>
-                  <th style={{ padding: '0.5rem' }}>Analyst Target</th>
+                  <th style={{ padding: '0.5rem' }}>RL Acc (Past)</th>
+                  <th style={{ padding: '0.5rem' }}>Correlated Asset</th>
+                  <th style={{ padding: '0.5rem' }}>SOM/SAM/TAM ($B)</th>
+                  <th style={{ padding: '0.5rem' }}>1Y BS Min/Max</th>
                 </tr>
               </thead>
               <tbody>
@@ -111,9 +119,12 @@ export default function Home() {
                         {item.rl_action} ({item.rl_confidence?.toFixed(0)}%)
                       </span>
                     </td>
-                    <td style={{ padding: '0.5rem' }}>{item.bs_min_1y_estimation ? `$${item.bs_min_1y_estimation.toFixed(2)}` : 'N/A'}</td>
-                    <td style={{ padding: '0.5rem' }}>{item.bs_max_1y_estimation ? `$${item.bs_max_1y_estimation.toFixed(2)}` : 'N/A'}</td>
-                    <td style={{ padding: '0.5rem' }}>{item.analyst_target_price ? `$${item.analyst_target_price.toFixed(2)}` : 'N/A'}</td>
+                    <td style={{ padding: '0.5rem' }}>{item.rl_backtest_accuracy ? `${item.rl_backtest_accuracy.toFixed(0)}%` : 'N/A'}</td>
+                    <td style={{ padding: '0.5rem' }} title={`Corr: ${item.highest_corr_value?.toFixed(2)}`}>{item.highest_corr_ticker}</td>
+                    <td style={{ padding: '0.5rem', fontSize: '0.9em' }}>{item.som_b?.toFixed(1)} / {item.sam_b?.toFixed(1)} / {item.tam_b?.toFixed(1)}</td>
+                    <td style={{ padding: '0.5rem' }}>
+                      {item.bs_min_1y_estimation ? `$${item.bs_min_1y_estimation.toFixed(2)}` : 'N/A'} - {item.bs_max_1y_estimation ? `$${item.bs_max_1y_estimation.toFixed(2)}` : 'N/A'}
+                    </td>
                   </tr>
                 ))}
               </tbody>

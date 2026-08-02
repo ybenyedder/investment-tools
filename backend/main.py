@@ -73,11 +73,15 @@ def analyze_assets(
     # Extract standard deviation (volatility) as risk
     volatility = pd.Series(np.sqrt(np.diag(S)), index=S.index)
     
+    # Calculate Correlation Matrix to extract parameters that correlate
+    corr_matrix = hist_data.pct_change().corr()
+    
     # 3. Gather Analyst Estimates & Basic WACC Components (Proxy)
     results = []
     
     for ticker in tickers:
         ticker_info = yf.Ticker(ticker).info
+        ticker_hist = hist_data[ticker].dropna() if ticker in hist_data.columns else pd.Series()
         
         # Risk & Return from historical
         exp_return = mu.get(ticker, 0)
@@ -177,6 +181,50 @@ def analyze_assets(
                         rl_confidence = 60.0
         except Exception:
             pass
+            
+        # RL Backtest Accuracy (Sliding Window on Past Data)
+        rl_accuracy = 0.0
+        try:
+            if len(ticker_hist) > 500:
+                correct_predictions = 0
+                total_windows = 0
+                # Test at 5 different past points (sliding windows)
+                for years_ago in range(1, 6):
+                    idx = - (years_ago * 252)
+                    if abs(idx) + 200 < len(ticker_hist):
+                        past_slice = ticker_hist.iloc[:idx]
+                        if len(past_slice) > 200:
+                            past_ma50 = past_slice.rolling(50).mean().iloc[-1]
+                            past_ma200 = past_slice.rolling(200).mean().iloc[-1]
+                            
+                            pred_buy = past_ma50 > past_ma200
+                            future_price = ticker_hist.iloc[idx + 252] if (idx + 252 < 0) else ticker_hist.iloc[-1]
+                            current_price_past = past_slice.iloc[-1]
+                            actual_up = future_price > current_price_past
+                            
+                            if pred_buy == actual_up:
+                                correct_predictions += 1
+                            total_windows += 1
+                if total_windows > 0:
+                    rl_accuracy = (correct_predictions / total_windows) * 100
+        except Exception:
+            pass
+            
+        # TAM, SAM, SOM Estimation (in Billions)
+        revenue = ticker_info.get("totalRevenue", 0)
+        market_cap = ticker_info.get("marketCap", 0)
+        som = revenue if revenue > 0 else (market_cap * 0.05 if market_cap else 0)
+        sam = som * 5
+        tam = sam * 4
+        
+        # Parameter Correlation
+        highest_corr_ticker = "None"
+        highest_corr_value = 0.0
+        if ticker in corr_matrix.columns:
+            corrs = corr_matrix[ticker].drop(ticker, errors='ignore')
+            if not corrs.empty and not corrs.isna().all():
+                highest_corr_ticker = str(corrs.idxmax())
+                highest_corr_value = float(corrs.max())
         
         results.append({
             "ticker": ticker,
@@ -195,10 +243,15 @@ def analyze_assets(
             "bs_max_1y_estimation": bs_max_1y,
             "sarima_1y_forecast": sarima_forecast,
             "rl_action": rl_action,
-            "rl_action": rl_action,
             "rl_confidence": rl_confidence,
+            "rl_backtest_accuracy": rl_accuracy,
             "treynor_ratio": treynor_ratio,
-            "sortino_ratio": sortino_ratio
+            "sortino_ratio": sortino_ratio,
+            "tam_b": tam / 1e9,
+            "sam_b": sam / 1e9,
+            "som_b": som / 1e9,
+            "highest_corr_ticker": highest_corr_ticker,
+            "highest_corr_value": highest_corr_value
         })
     
     # 4. Rank by selected Quantitative Method
