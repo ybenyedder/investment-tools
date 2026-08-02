@@ -32,13 +32,28 @@ app.add_middleware(
 
 # Example universe of assets
 ASSET_UNIVERSE = {
-    "Stocks": {
-        "Technology": ["AAPL", "MSFT", "GOOGL", "NVDA"],
-        "Healthcare": ["JNJ", "PFE", "UNH"],
-        "Finance": ["JPM", "BAC", "V"],
+    "US Markets (NASDAQ & NYSE)": {
+        "Big Tech / AI": ["AAPL", "MSFT", "GOOGL", "META", "AMZN", "NVDA", "TSLA", "AMD", "INTC", "TSM", "ASML", "AVGO", "CSCO"],
+        "Power & Energy Storage": ["FLNC", "ENPH", "SEDG", "ALB", "FSLR", "PLUG"],
+        "Finance": ["JPM", "BAC", "V", "MA", "GS", "MS"],
+        "Healthcare": ["JNJ", "PFE", "UNH", "LLY", "ABBV"],
+        "Consumer": ["WMT", "PG", "KO", "PEP", "MCD", "NKE"],
     },
-    "ETFs": ["SPY", "QQQ", "EFA", "EEM"],
-    "Commodities": ["GLD", "SLV", "USO"]
+    "Europe (CAC40, DAX, FTSE, MIB)": {
+        "France (CAC 40)": ["MC.PA", "OR.PA", "RMS.PA", "TTE.PA", "SAN.PA", "AIR.PA", "BNP.PA"],
+        "Germany (DAX)": ["SAP.DE", "SIE.DE", "ALV.DE", "DTE.DE", "VOW3.DE", "MBG.DE"],
+        "UK (FTSE 100)": ["AZN.L", "SHEL.L", "HSBA.L", "ULVR.L", "BP.L", "BATS.L"],
+        "Italy (MIB)": ["ENEL.MI", "ENI.MI", "ISP.MI", "STLA.MI", "UCG.MI", "RACE.MI"],
+    },
+    "Asia (Nikkei, Chinese, Hang Seng)": {
+        "Japan (Nikkei 225)": ["7203.T", "6758.T", "9984.T", "8306.T", "6861.T"],
+        "China & Hong Kong": ["TCEHY", "BABA", "0700.HK", "9988.HK", "BIDU", "JD", "NIO", "PDD"],
+        "India & Emerging": ["RELIANCE.NS", "TCS.NS", "INFY", "HDB"],
+    },
+    "Funds & Commodities": {
+        "Global ETFs": ["SPY", "QQQ", "VGK", "VWO", "INDA", "MCHI", "EWJ", "EWU"],
+        "Commodities": ["GLD", "SLV", "USO", "UNG", "CPER"],
+    }
 }
 
 @app.get("/api/universe")

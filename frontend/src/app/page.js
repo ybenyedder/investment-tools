@@ -71,6 +71,14 @@ export default function Home() {
     }
   };
 
+  const handleDomainSelect = (e) => {
+    const selected = e.target.value;
+    if (selected) {
+      setTickers(selected);
+      e.target.value = "";
+    }
+  };
+
   return (
     <main style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif' }}>
       <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>Investment Analysis Dashboard</h1>
@@ -78,10 +86,22 @@ export default function Home() {
       <div style={{ marginBottom: '2rem', padding: '1rem', backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
         <h3>Select Tickers and Quantitative Method</h3>
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-          <button onClick={() => setTickers("AAPL,MSFT,TSLA,SPY,GLD")} style={btnStyle}>Default</button>
-          <button onClick={() => setTickers("NVDA,AMD,INTC,TSM,ASML")} style={btnStyle}>AI / Semiconductors</button>
-          <button onClick={() => setTickers("FLNC,ENPH,SEDG,TSLA,ALB")} style={btnStyle}>Power Storage</button>
-          <button onClick={() => setTickers("SPY,VGK,VWO,INDA,MCHI")} style={btnStyle}>Global ETFs</button>
+          <select 
+            onChange={handleDomainSelect}
+            style={{ padding: '0.4rem 0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', color: 'black' }}
+            defaultValue=""
+          >
+            <option value="" disabled>Load Full Domain / Market...</option>
+            {universe && Object.keys(universe).map((region) => (
+              <optgroup key={`opt-${region}`} label={region}>
+                {Object.keys(universe[region]).map((domain) => (
+                  <option key={`domain-${domain}`} value={universe[region][domain].join(',')}>
+                    {domain}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
           <select 
             onChange={handleCompanySelect}
             style={{ padding: '0.4rem 0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', color: 'black' }}
