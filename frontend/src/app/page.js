@@ -10,7 +10,11 @@ export default function Home() {
   const [quantMethod, setQuantMethod] = useState("sharpe");
   const [stochasticModel, setStochasticModel] = useState("bs");
   const [universe, setUniverse] = useState({});
-  const btnStyle = { padding: '0.4rem 0.8rem', backgroundColor: '#e2e8f0', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9em' };
+  const [chatPrompt, setChatPrompt] = useState("");
+  const [chatResponse, setChatResponse] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  
+  const btnStyle = { padding: '0.4rem 0.8rem', backgroundColor: '#e2e8f0', color: '#1e293b', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9em' };
 
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -35,6 +39,28 @@ export default function Home() {
       console.error(err);
     }
     setLoading(false);
+  };
+
+  const askAi = async () => {
+    if (!chatPrompt.trim()) return;
+    setChatLoading(true);
+    setChatResponse("");
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const res = await fetch(`${apiUrl}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          prompt: chatPrompt, 
+          context: data ? data.top_10 : []
+        })
+      });
+      const json = await res.json();
+      setChatResponse(json.response || json.error);
+    } catch (err) {
+      setChatResponse("Failed to connect to Local LLM.");
+    }
+    setChatLoading(false);
   };
 
   return (
@@ -82,6 +108,34 @@ export default function Home() {
         >
           {loading ? 'Analyzing...' : 'Run Analysis'}
         </button>
+      </div>
+      
+      {/* Ask Local LLM Section */}
+      <div style={{ marginBottom: '2rem', padding: '1rem', backgroundColor: '#eef2ff', borderRadius: '8px', border: '1px solid #c7d2fe' }}>
+        <h3 style={{ color: '#3730a3', marginTop: 0 }}>Ask the Local LLM (Investment Assistant)</h3>
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+          <input 
+            type="text" 
+            value={chatPrompt}
+            onChange={(e) => setChatPrompt(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && askAi()}
+            style={{ flex: 1, padding: '0.5rem', borderRadius: '4px', border: '1px solid #c7d2fe' }}
+            placeholder="e.g. Which of these AI companies has the highest TAM?"
+          />
+          <button 
+            onClick={askAi} 
+            disabled={chatLoading}
+            style={{ padding: '0.5rem 1rem', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+          >
+            {chatLoading ? 'Thinking...' : 'Ask AI'}
+          </button>
+        </div>
+        {chatResponse && (
+          <div style={{ padding: '1rem', backgroundColor: 'white', borderRadius: '4px', border: '1px solid #e0e7ff', color: '#1e293b' }}>
+            <strong style={{ color: '#4f46e5' }}>LLM Response:</strong>
+            <p style={{ marginTop: '0.5rem', whiteSpace: 'pre-wrap' }}>{chatResponse}</p>
+          </div>
+        )}
       </div>
 
       {data && data.error && (

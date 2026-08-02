@@ -6,7 +6,8 @@ import numpy as np
 import math
 from pypfopt import expected_returns, risk_models
 from statsmodels.tsa.statespace.sarimax import SARIMAX
-from typing import List
+from typing import List, Optional
+from pydantic import BaseModel
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -286,3 +287,49 @@ def analyze_assets(
         "top_10": top_10,
         "plot_data": plot_data
     }
+
+class ChatRequest(BaseModel):
+    prompt: str
+    context: list = []
+
+@app.post("/api/chat")
+async def chat_with_llm(request: ChatRequest):
+    """Local LLM Chat endpoint using llama-cpp-python for financial queries."""
+    try:
+        import bleach
+        # SECURITY: Sanitize the user input before passing it to the backend model
+        clean_prompt = bleach.clean(request.prompt)
+        
+        # Build prompt with context
+        context_str = ""
+        if request.context:
+            context_str = "Context (Top 5 Assets):\n"
+            for item in request.context[:5]:
+                context_str += f"- {item.get('ticker')}: Price ${item.get('current_price', 0):.2f}, TAM ${item.get('tam_b', 0):.1f}B, RL Action: {item.get('rl_action')}\n"
+        
+        # TinyLlama Chat Format
+        full_prompt = f"<|system|>\nYou are a helpful financial assistant.<|end|>\n<|user|>\n{context_str}\nQuestion: {clean_prompt}<|end|>\n<|assistant|>\n"
+        
+        try:
+            from llama_cpp import Llama
+            import os
+            model_path = os.path.join(os.path.dirname(__file__), "models", "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf")
+            if not os.path.exists(model_path):
+                return {"error": "Local LLM model is currently downloading or not found. Please try again in a few minutes."}
+            
+            global _llm
+            if '_llm' not in globals():
+                _llm = Llama(model_path=model_path, n_ctx=1024, verbose=False)
+                
+            output = _llm(full_prompt, max_tokens=200, stop=["<|user|>", "<|end|>"], echo=False)
+            response_text = output['choices'][0]['text'].strip()
+            
+            # SECURITY: Sanitize the model output before sending to frontend
+            clean_response = bleach.clean(response_text)
+            return {"response": clean_response}
+            
+        except ImportError:
+            return {"error": "llama-cpp-python library is not installed yet."}
+            
+    except Exception as e:
+        return {"error": f"LLM Error: {str(e)}"}
