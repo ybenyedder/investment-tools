@@ -118,11 +118,19 @@ def analyze_assets(
         # Black-Scholes / Geometric Brownian Motion 1-Year Min/Max Estimation (95% Confidence)
         bs_min_1y = None
         bs_max_1y = None
+        bachelier_min_1y = None
+        bachelier_max_1y = None
         if current_price and current_price > 0 and risk > 0:
             drift = exp_return - 0.5 * (risk ** 2)
             diffusion = 1.96 * risk # 1.96 standard deviations for 95% CI
             bs_min_1y = current_price * math.exp(drift - diffusion)
             bs_max_1y = current_price * math.exp(drift + diffusion)
+            
+            # Bachelier Model (Arithmetic Brownian Motion)
+            expected_price_bachelier = current_price * (1 + exp_return)
+            price_std_bachelier = current_price * risk
+            bachelier_min_1y = expected_price_bachelier - 1.96 * price_std_bachelier
+            bachelier_max_1y = expected_price_bachelier + 1.96 * price_std_bachelier
             
         # SARIMA 1-Year Forecast (using Monthly Data to keep it fast)
         sarima_forecast = None
@@ -241,6 +249,8 @@ def analyze_assets(
             "capm_cost_of_equity": cost_of_equity,
             "bs_min_1y_estimation": bs_min_1y,
             "bs_max_1y_estimation": bs_max_1y,
+            "bachelier_min_1y_estimation": bachelier_min_1y,
+            "bachelier_max_1y_estimation": bachelier_max_1y,
             "sarima_1y_forecast": sarima_forecast,
             "rl_action": rl_action,
             "rl_confidence": rl_confidence,

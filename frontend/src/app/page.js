@@ -8,6 +8,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [tickers, setTickers] = useState("AAPL,MSFT,TSLA,SPY,GLD");
   const [quantMethod, setQuantMethod] = useState("sharpe");
+  const [stochasticModel, setStochasticModel] = useState("bs");
   const [universe, setUniverse] = useState({});
   const btnStyle = { padding: '0.4rem 0.8rem', backgroundColor: '#e2e8f0', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9em' };
 
@@ -65,6 +66,14 @@ export default function Home() {
             <option value="sortino">Sortino Ratio</option>
             <option value="treynor">Treynor Ratio</option>
           </select>
+          <select 
+            value={stochasticModel} 
+            onChange={(e) => setStochasticModel(e.target.value)}
+            style={{ padding: '0.5rem', borderRadius: '4px', backgroundColor: '#e0f2fe' }}
+          >
+            <option value="bs">Black-Scholes (GBM)</option>
+            <option value="bachelier">Bachelier Model (ABM)</option>
+          </select>
         </div>
         <button 
           onClick={analyze} 
@@ -97,7 +106,7 @@ export default function Home() {
                   <th style={{ padding: '0.5rem' }}>RL Acc (Past)</th>
                   <th style={{ padding: '0.5rem' }}>Correlated Asset</th>
                   <th style={{ padding: '0.5rem' }}>SOM/SAM/TAM ($B)</th>
-                  <th style={{ padding: '0.5rem' }}>1Y BS Min/Max</th>
+                  <th style={{ padding: '0.5rem' }}>1Y {stochasticModel === 'bs' ? 'BS' : 'Bachelier'} Min/Max</th>
                 </tr>
               </thead>
               <tbody>
@@ -123,7 +132,11 @@ export default function Home() {
                     <td style={{ padding: '0.5rem' }} title={`Corr: ${item.highest_corr_value?.toFixed(2)}`}>{item.highest_corr_ticker}</td>
                     <td style={{ padding: '0.5rem', fontSize: '0.9em' }}>{item.som_b?.toFixed(1)} / {item.sam_b?.toFixed(1)} / {item.tam_b?.toFixed(1)}</td>
                     <td style={{ padding: '0.5rem' }}>
-                      {item.bs_min_1y_estimation ? `$${item.bs_min_1y_estimation.toFixed(2)}` : 'N/A'} - {item.bs_max_1y_estimation ? `$${item.bs_max_1y_estimation.toFixed(2)}` : 'N/A'}
+                      {stochasticModel === 'bs' ? (
+                        `${item.bs_min_1y_estimation ? `$${item.bs_min_1y_estimation.toFixed(2)}` : 'N/A'} - ${item.bs_max_1y_estimation ? `$${item.bs_max_1y_estimation.toFixed(2)}` : 'N/A'}`
+                      ) : (
+                        `${item.bachelier_min_1y_estimation ? `$${item.bachelier_min_1y_estimation.toFixed(2)}` : 'N/A'} - ${item.bachelier_max_1y_estimation ? `$${item.bachelier_max_1y_estimation.toFixed(2)}` : 'N/A'}`
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -156,7 +169,7 @@ export default function Home() {
           </div>
           
           <div style={{ marginTop: '2rem' }}>
-            <h2>1-Year Price Projections: Black-Scholes Range & AI Forecasts</h2>
+            <h2>1-Year Price Projections: {stochasticModel === 'bs' ? 'Black-Scholes' : 'Bachelier'} Range & AI Forecasts</h2>
             <div style={{ width: '100%', height: '400px', backgroundColor: '#111827', padding: '1rem', borderRadius: '8px', color: 'white' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart 
@@ -165,7 +178,9 @@ export default function Home() {
                     name: t.ticker,
                     current_price: t.current_price,
                     sarima: t.sarima_1y_forecast,
-                    range: [t.bs_min_1y_estimation || t.current_price, t.bs_max_1y_estimation || t.current_price]
+                    range: stochasticModel === 'bs' 
+                      ? [t.bs_min_1y_estimation || t.current_price, t.bs_max_1y_estimation || t.current_price]
+                      : [t.bachelier_min_1y_estimation || t.current_price, t.bachelier_max_1y_estimation || t.current_price]
                   }))}
                   margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
                 >
@@ -174,13 +189,13 @@ export default function Home() {
                   <YAxis dataKey="name" type="category" stroke="#9ca3af" width={60} />
                   <Tooltip cursor={{fill: 'rgba(255,255,255,0.1)'}} formatter={(val) => Array.isArray(val) ? `Min: $${val[0].toFixed(2)} - Max: $${val[1].toFixed(2)}` : `$${val.toFixed(2)}`} />
                   <Legend wrapperStyle={{ color: '#fff' }} />
-                  <Bar dataKey="range" name="Black-Scholes 95% Expected Range (1Y)" fill="url(#colorUv)" barSize={20} radius={[10, 10, 10, 10]} />
+                  <Bar dataKey="range" name={`${stochasticModel === 'bs' ? 'Black-Scholes (GBM)' : 'Bachelier (ABM)'} 95% Expected Range (1Y)`} fill="url(#colorUv)" barSize={20} radius={[10, 10, 10, 10]} />
                   <Scatter dataKey="current_price" name="Current Price" fill="#facc15" shape="star" />
                   <Scatter dataKey="sarima" name="SARIMA 1Y Forecast" fill="#10b981" shape="circle" />
                   <defs>
                     <linearGradient id="colorUv" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.8}/>
+                      <stop offset="5%" stopColor={stochasticModel === 'bs' ? "#3b82f6" : "#ec4899"} stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor={stochasticModel === 'bs' ? "#8b5cf6" : "#f43f5e"} stopOpacity={0.8}/>
                     </linearGradient>
                   </defs>
                 </ComposedChart>
