@@ -7,6 +7,7 @@ export default function Home() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [tickers, setTickers] = useState("AAPL,MSFT,TSLA,SPY,GLD");
+  const [quantMethod, setQuantMethod] = useState("sharpe");
   const [universe, setUniverse] = useState({});
 
   useEffect(() => {
@@ -21,7 +22,7 @@ export default function Home() {
     setLoading(true);
     try {
       const tickerList = tickers.split(',').map(t => t.trim()).filter(Boolean);
-      const query = tickerList.map(t => `tickers=${t}`).join('&');
+      const query = tickerList.map(t => `tickers=${t}`).join('&') + `&quant_method=${quantMethod}`;
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
       const res = await fetch(`${apiUrl}/api/analyze?${query}`, {
         method: 'POST'
@@ -39,14 +40,25 @@ export default function Home() {
       <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>Investment Analysis Dashboard</h1>
       
       <div style={{ marginBottom: '2rem', padding: '1rem', backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
-        <h3>Select Tickers to Analyze</h3>
-        <input 
-          type="text" 
-          value={tickers}
-          onChange={(e) => setTickers(e.target.value)}
-          style={{ width: '100%', padding: '0.5rem', marginTop: '0.5rem', marginBottom: '1rem' }}
-          placeholder="AAPL, MSFT, TSLA..."
-        />
+        <h3>Select Tickers and Quantitative Method</h3>
+        <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', marginBottom: '1rem' }}>
+          <input 
+            type="text" 
+            value={tickers}
+            onChange={(e) => setTickers(e.target.value)}
+            style={{ flex: 1, padding: '0.5rem' }}
+            placeholder="AAPL, MSFT, TSLA..."
+          />
+          <select 
+            value={quantMethod} 
+            onChange={(e) => setQuantMethod(e.target.value)}
+            style={{ padding: '0.5rem', borderRadius: '4px' }}
+          >
+            <option value="sharpe">Sharpe Ratio</option>
+            <option value="sortino">Sortino Ratio</option>
+            <option value="treynor">Treynor Ratio</option>
+          </select>
+        </div>
         <button 
           onClick={analyze} 
           disabled={loading}
@@ -71,6 +83,8 @@ export default function Home() {
                   <th style={{ padding: '0.5rem' }}>Exp. Return</th>
                   <th style={{ padding: '0.5rem' }}>Risk (Vol)</th>
                   <th style={{ padding: '0.5rem' }}>Sharpe Ratio</th>
+                  <th style={{ padding: '0.5rem' }}>Sortino</th>
+                  <th style={{ padding: '0.5rem' }}>Treynor</th>
                   <th style={{ padding: '0.5rem' }}>1Y SARIMA</th>
                   <th style={{ padding: '0.5rem' }}>RL Agent Action</th>
                   <th style={{ padding: '0.5rem' }}>1Y BS Min</th>
@@ -84,7 +98,9 @@ export default function Home() {
                     <td style={{ padding: '0.5rem' }}><strong>{item.ticker}</strong><br/><small>{item.name}</small></td>
                     <td style={{ padding: '0.5rem' }}>{(item.historical_expected_return * 100).toFixed(2)}%</td>
                     <td style={{ padding: '0.5rem' }}>{(item.volatility_risk * 100).toFixed(2)}%</td>
-                    <td style={{ padding: '0.5rem' }}>{item.sharpe_ratio.toFixed(2)}</td>
+                    <td style={{ padding: '0.5rem', fontWeight: quantMethod === 'sharpe' ? 'bold' : 'normal', backgroundColor: quantMethod === 'sharpe' ? '#e0f2fe' : 'transparent' }}>{item.sharpe_ratio?.toFixed(2)}</td>
+                    <td style={{ padding: '0.5rem', fontWeight: quantMethod === 'sortino' ? 'bold' : 'normal', backgroundColor: quantMethod === 'sortino' ? '#e0f2fe' : 'transparent' }}>{item.sortino_ratio?.toFixed(2)}</td>
+                    <td style={{ padding: '0.5rem', fontWeight: quantMethod === 'treynor' ? 'bold' : 'normal', backgroundColor: quantMethod === 'treynor' ? '#e0f2fe' : 'transparent' }}>{item.treynor_ratio?.toFixed(2)}</td>
                     <td style={{ padding: '0.5rem', color: '#8884d8', fontWeight: 'bold' }}>{item.sarima_1y_forecast ? `$${item.sarima_1y_forecast.toFixed(2)}` : 'N/A'}</td>
                     <td style={{ padding: '0.5rem' }}>
                       <span style={{ 

@@ -55,7 +55,10 @@ def get_historical_data(tickers: List[str], period: str = "10y"):
     return data
 
 @app.post("/api/analyze")
-def analyze_assets(tickers: List[str] = Query(default=["AAPL", "MSFT"])):
+def analyze_assets(
+    tickers: List[str] = Query(default=["AAPL", "MSFT"]),
+    quant_method: str = Query(default="sharpe", description="Quantitative method to rank by: sharpe, sortino, treynor")
+):
     """Analyze a list of tickers, calculating expected returns, risk, and analyst targets."""
     # 1. Fetch 10-year historical data
     hist_data = get_historical_data(tickers, period="10y")
@@ -99,6 +102,14 @@ def analyze_assets(tickers: List[str] = Query(default=["AAPL", "MSFT"])):
         market_return = 0.10 # Assume 10% expected market return
         # CAPM Cost of Equity
         cost_of_equity = risk_free_rate + beta * (market_return - risk_free_rate)
+        
+        # Calculate Advanced Quantitative Ratios
+        treynor_ratio = (exp_return - risk_free_rate) / beta if beta and beta != 0 else 0
+        
+        returns_series = ticker_hist.pct_change().dropna()
+        downside_returns = returns_series[returns_series < 0]
+        downside_std = downside_returns.std() * np.sqrt(252) if not downside_returns.empty else 0
+        sortino_ratio = (exp_return - risk_free_rate) / downside_std if downside_std > 0 else 0
         
         # Black-Scholes / Geometric Brownian Motion 1-Year Min/Max Estimation (95% Confidence)
         bs_min_1y = None
@@ -184,11 +195,20 @@ def analyze_assets(tickers: List[str] = Query(default=["AAPL", "MSFT"])):
             "bs_max_1y_estimation": bs_max_1y,
             "sarima_1y_forecast": sarima_forecast,
             "rl_action": rl_action,
-            "rl_confidence": rl_confidence
+            "rl_action": rl_action,
+            "rl_confidence": rl_confidence,
+            "treynor_ratio": treynor_ratio,
+            "sortino_ratio": sortino_ratio
         })
     
-    # 4. Rank by Sharpe Ratio (Risk vs Expectation)
-    results.sort(key=lambda x: x["sharpe_ratio"], reverse=True)
+    # 4. Rank by selected Quantitative Method
+    if quant_method == "sortino":
+        results.sort(key=lambda x: x.get("sortino_ratio", 0), reverse=True)
+    elif quant_method == "treynor":
+        results.sort(key=lambda x: x.get("treynor_ratio", 0), reverse=True)
+    else:
+        results.sort(key=lambda x: x.get("sharpe_ratio", 0), reverse=True)
+        
     top_10 = results[:10]
     
     # Prepare historical data for plotting
