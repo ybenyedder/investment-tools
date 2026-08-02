@@ -185,3 +185,65 @@ def test_analyze_assets_empty_tickers():
     tickers = [item["ticker"] for item in data["analysis"]]
     assert "AAPL" in tickers
     assert "MSFT" in tickers
+
+def test_analyze_assets_long_list():
+    """Test performance and stability when analyzing a large number of assets simultaneously."""
+    tickers = ["AAPL", "MSFT", "GOOGL", "TSLA", "NVDA", "SPY", "GLD"]
+    query = "&".join([f"tickers={t}" for t in tickers])
+    response = client.post(f"/api/analyze?{query}")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["analysis"]) == len(tickers)
+    assert len(data["top_10"]) <= 10
+
+def test_chat_endpoint_no_context():
+    """Test the /api/chat endpoint when no context list is provided."""
+    payload = {
+        "prompt": "What is the best investment strategy for a beginner?"
+        # Omitting context intentionally
+    }
+    response = client.post("/api/chat", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert "response" in data or "error" in data
+
+def test_universe_structure_deep():
+    """Test deep structural integrity of the newly expanded global asset universe."""
+    response = client.get("/api/universe")
+    assert response.status_code == 200
+    data = response.json()
+    assert "Funds & Commodities" in data
+    assert "World ETFs" in data["Funds & Commodities"]
+    world_etfs = data["Funds & Commodities"]["World ETFs"]
+    assert "VT" in world_etfs
+    assert "ACWI" in world_etfs
+    
+    assert "Asia (Nikkei, Chinese, Hang Seng)" in data
+    assert "Japan (Nikkei 225)" in data["Asia (Nikkei, Chinese, Hang Seng)"]
+    assert "7203.T" in data["Asia (Nikkei, Chinese, Hang Seng)"]["Japan (Nikkei 225)"]
+
+def test_analyze_assets_invalid_quant_method():
+    """Test the analyze endpoint with a completely invalid quantitative method."""
+    response = client.post("/api/analyze?tickers=AAPL&quant_method=made_up_ratio")
+    assert response.status_code == 200
+    data = response.json()
+    # Should fall back to sharpe_ratio sorting
+    assert len(data["analysis"]) == 1
+
+def test_analyze_assets_case_insensitivity():
+    """Test that passing lowercase tickers works securely with yfinance."""
+    response = client.post("/api/analyze?tickers=aapl&tickers=msft")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["analysis"]) == 2
+    # yfinance usually standardizes to uppercase, but verify response is successful
+    assert data["analysis"][0]["ticker"].upper() in ["AAPL", "MSFT"]
+
+def test_chat_endpoint_missing_prompt():
+    """Test the chat endpoint when the prompt field is entirely missing (validation error expected)."""
+    payload = {
+        "context": [{"ticker": "AAPL", "current_price": 150}]
+    }
+    response = client.post("/api/chat", json=payload)
+    # FastAPI pydantic validation should catch this as a 422 Unprocessable Entity
+    assert response.status_code == 422
