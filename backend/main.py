@@ -78,6 +78,10 @@ def analyze_assets(tickers: List[str] = Query(default=["AAPL", "MSFT"])):
         exp_return = mu.get(ticker, 0)
         risk = volatility.get(ticker, 0)
         
+        # Clean NaN values which break JSON serialization
+        if pd.isna(exp_return): exp_return = 0.0
+        if pd.isna(risk): risk = 0.0
+        
         # Analyst Targets
         target_mean_price = ticker_info.get("targetMeanPrice", None)
         current_price = ticker_info.get("currentPrice", ticker_info.get("regularMarketPrice", None))
@@ -116,8 +120,8 @@ def analyze_assets(tickers: List[str] = Query(default=["AAPL", "MSFT"])):
     # Prepare historical data for plotting
     # Downsample or limit points to prevent massive JSON payload
     hist_data.index = hist_data.index.astype(str)
-    # Resample to monthly to reduce data points
-    monthly_data = hist_data.iloc[::20, :]
+    # Resample to monthly to reduce data points, and fill NaNs
+    monthly_data = hist_data.iloc[::20, :].ffill().bfill().fillna(0)
     plot_data = monthly_data.reset_index().to_dict(orient="records")
     
     return {

@@ -7,3 +7,5 @@ numpy-financial
 scipy
 statsmodels
 PyPortfolioOpt
+pytest
+httpx
