@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import yfinance as yf
 import pandas as pd
@@ -12,6 +12,8 @@ import warnings
 warnings.filterwarnings('ignore')
 
 import os
+import requests
+from io import StringIO
 
 app = FastAPI(title="Investment Analysis API")
 
@@ -57,13 +59,15 @@ ASSET_UNIVERSE = {
 }
 
 try:
-    # Dynamically fetch S&P 500 from Wikipedia
-    sp500_table = pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')[0]
+    # Dynamically fetch S&P 500 from Wikipedia with proper User-Agent
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    r = requests.get('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies', headers=headers)
+    sp500_table = pd.read_html(StringIO(r.text))[0]
     sp500_tickers = sp500_table['Symbol'].tolist()
     sp500_tickers = [t.replace('.', '-') for t in sp500_tickers] # format for yfinance
     ASSET_UNIVERSE["US Markets (NASDAQ & NYSE)"]["S&P 500"] = sp500_tickers
-except Exception:
-    pass
+except Exception as e:
+    print(f"Failed to fetch S&P 500: {e}")
 
 @app.get("/api/universe")
 def get_universe():

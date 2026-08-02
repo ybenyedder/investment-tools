@@ -9,11 +9,12 @@ def test_get_universe():
     response = client.get("/api/universe")
     assert response.status_code == 200
     data = response.json()
-    assert "Stocks" in data
-    assert "ETFs" in data
-    assert "Commodities" in data
-    assert "Technology" in data["Stocks"]
-    assert "AAPL" in data["Stocks"]["Technology"]
+    assert "US Markets (NASDAQ & NYSE)" in data
+    assert "Europe (CAC40, DAX, FTSE, MIB)" in data
+    assert "Big Tech / AI" in data["US Markets (NASDAQ & NYSE)"]
+    assert "AAPL" in data["US Markets (NASDAQ & NYSE)"]["Big Tech / AI"]
+    assert "S&P 500" in data["US Markets (NASDAQ & NYSE)"]
+    assert len(data["US Markets (NASDAQ & NYSE)"]["S&P 500"]) > 400
 
 def test_analyze_assets_success():
     """Test the core analyze endpoint with valid standard tickers."""
