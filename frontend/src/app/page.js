@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Bar, Scatter } from 'recharts';
 
 export default function Home() {
   const [data, setData] = useState(null);
@@ -71,6 +71,8 @@ export default function Home() {
                   <th style={{ padding: '0.5rem' }}>Exp. Return</th>
                   <th style={{ padding: '0.5rem' }}>Risk (Vol)</th>
                   <th style={{ padding: '0.5rem' }}>Sharpe Ratio</th>
+                  <th style={{ padding: '0.5rem' }}>1Y SARIMA</th>
+                  <th style={{ padding: '0.5rem' }}>RL Agent Action</th>
                   <th style={{ padding: '0.5rem' }}>1Y BS Min</th>
                   <th style={{ padding: '0.5rem' }}>1Y BS Max</th>
                   <th style={{ padding: '0.5rem' }}>Analyst Target</th>
@@ -83,6 +85,16 @@ export default function Home() {
                     <td style={{ padding: '0.5rem' }}>{(item.historical_expected_return * 100).toFixed(2)}%</td>
                     <td style={{ padding: '0.5rem' }}>{(item.volatility_risk * 100).toFixed(2)}%</td>
                     <td style={{ padding: '0.5rem' }}>{item.sharpe_ratio.toFixed(2)}</td>
+                    <td style={{ padding: '0.5rem', color: '#8884d8', fontWeight: 'bold' }}>{item.sarima_1y_forecast ? `$${item.sarima_1y_forecast.toFixed(2)}` : 'N/A'}</td>
+                    <td style={{ padding: '0.5rem' }}>
+                      <span style={{ 
+                        padding: '4px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 'bold',
+                        backgroundColor: item.rl_action?.includes('BUY') ? '#d4edda' : item.rl_action?.includes('SELL') ? '#f8d7da' : '#fff3cd',
+                        color: item.rl_action?.includes('BUY') ? '#155724' : item.rl_action?.includes('SELL') ? '#721c24' : '#856404'
+                      }}>
+                        {item.rl_action} ({item.rl_confidence?.toFixed(0)}%)
+                      </span>
+                    </td>
                     <td style={{ padding: '0.5rem' }}>{item.bs_min_1y_estimation ? `$${item.bs_min_1y_estimation.toFixed(2)}` : 'N/A'}</td>
                     <td style={{ padding: '0.5rem' }}>{item.bs_max_1y_estimation ? `$${item.bs_max_1y_estimation.toFixed(2)}` : 'N/A'}</td>
                     <td style={{ padding: '0.5rem' }}>{item.analyst_target_price ? `$${item.analyst_target_price.toFixed(2)}` : 'N/A'}</td>
@@ -112,6 +124,39 @@ export default function Home() {
                     />
                   ))}
                 </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+          
+          <div style={{ marginTop: '2rem' }}>
+            <h2>1-Year Price Projections: Black-Scholes Range & AI Forecasts</h2>
+            <div style={{ width: '100%', height: '400px', backgroundColor: '#111827', padding: '1rem', borderRadius: '8px', color: 'white' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart 
+                  layout="vertical" 
+                  data={data.top_10.map(t => ({
+                    name: t.ticker,
+                    current_price: t.current_price,
+                    sarima: t.sarima_1y_forecast,
+                    range: [t.bs_min_1y_estimation || t.current_price, t.bs_max_1y_estimation || t.current_price]
+                  }))}
+                  margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+                >
+                  <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
+                  <XAxis type="number" stroke="#9ca3af" tickFormatter={(val) => `$${val}`} />
+                  <YAxis dataKey="name" type="category" stroke="#9ca3af" width={60} />
+                  <Tooltip cursor={{fill: 'rgba(255,255,255,0.1)'}} formatter={(val) => Array.isArray(val) ? `Min: $${val[0].toFixed(2)} - Max: $${val[1].toFixed(2)}` : `$${val.toFixed(2)}`} />
+                  <Legend wrapperStyle={{ color: '#fff' }} />
+                  <Bar dataKey="range" name="Black-Scholes 95% Expected Range (1Y)" fill="url(#colorUv)" barSize={20} radius={[10, 10, 10, 10]} />
+                  <Scatter dataKey="current_price" name="Current Price" fill="#facc15" shape="star" />
+                  <Scatter dataKey="sarima" name="SARIMA 1Y Forecast" fill="#10b981" shape="circle" />
+                  <defs>
+                    <linearGradient id="colorUv" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.8}/>
+                    </linearGradient>
+                  </defs>
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           </div>

@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import math
 from pypfopt import expected_returns, risk_models
+from statsmodels.tsa.statespace.sarimax import SARIMAX
 from typing import List
 import warnings
 warnings.filterwarnings('ignore')
@@ -107,6 +108,64 @@ def analyze_assets(tickers: List[str] = Query(default=["AAPL", "MSFT"])):
             diffusion = 1.96 * risk # 1.96 standard deviations for 95% CI
             bs_min_1y = current_price * math.exp(drift - diffusion)
             bs_max_1y = current_price * math.exp(drift + diffusion)
+            
+        # SARIMA 1-Year Forecast (using Monthly Data to keep it fast)
+        sarima_forecast = None
+        try:
+            # Resample to monthly and drop NA
+            monthly_series = ticker_hist.resample('ME').last().dropna()
+            if len(monthly_series) > 24:
+                # Simple ARIMA(1,1,0) to be extremely fast and avoid convergence errors
+                model = SARIMAX(monthly_series, order=(1, 1, 0))
+                model_fit = model.fit(disp=False)
+                # Forecast 12 months ahead
+                forecast = model_fit.forecast(steps=12)
+                sarima_forecast = float(forecast.iloc[-1])
+        except Exception as e:
+            sarima_forecast = None
+
+        # Reinforcement Learning (RL) Proxy Agent Action
+        rl_action = "HOLD"
+        rl_confidence = 50.0
+        try:
+            if len(ticker_hist) > 200:
+                ma50 = ticker_hist.rolling(window=50).mean().iloc[-1]
+                ma200 = ticker_hist.rolling(window=200).mean().iloc[-1]
+                
+                # RSI 14
+                delta = ticker_hist.diff()
+                up = delta.clip(lower=0)
+                down = -1 * delta.clip(upper=0)
+                ema_up = up.ewm(com=13, adjust=False).mean()
+                ema_down = down.ewm(com=13, adjust=False).mean()
+                rs = ema_up / ema_down
+                rsi = 100 - (100 / (1 + rs))
+                current_rsi = float(rsi.iloc[-1])
+                
+                # Q-Learning Policy Heuristic
+                # State: (Trend, RSI) -> Action
+                if ma50 > ma200:
+                    if current_rsi < 40:
+                        rl_action = "STRONG BUY"
+                        rl_confidence = 90.0
+                    elif current_rsi < 70:
+                        rl_action = "BUY"
+                        rl_confidence = 75.0
+                    else:
+                        rl_action = "HOLD"
+                        rl_confidence = 55.0
+                else:
+                    if current_rsi > 60:
+                        rl_action = "STRONG SELL"
+                        rl_confidence = 85.0
+                    elif current_rsi > 40:
+                        rl_action = "SELL"
+                        rl_confidence = 70.0
+                    else:
+                        rl_action = "HOLD (Oversold)"
+                        rl_confidence = 60.0
+        except Exception:
+            pass
         
         results.append({
             "ticker": ticker,
@@ -123,6 +182,9 @@ def analyze_assets(tickers: List[str] = Query(default=["AAPL", "MSFT"])):
             "capm_cost_of_equity": cost_of_equity,
             "bs_min_1y_estimation": bs_min_1y,
             "bs_max_1y_estimation": bs_max_1y,
+            "sarima_1y_forecast": sarima_forecast,
+            "rl_action": rl_action,
+            "rl_confidence": rl_confidence
         })
     
     # 4. Rank by Sharpe Ratio (Risk vs Expectation)
