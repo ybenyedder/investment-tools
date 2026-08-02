@@ -342,8 +342,15 @@ async def chat_with_llm(request: ChatRequest):
             for item in request.context[:5]:
                 context_str += f"- {item.get('ticker')}: Price ${item.get('current_price', 0):.2f}, TAM ${item.get('tam_b', 0):.1f}B, RL Action: {item.get('rl_action')}\n"
         
+        # System prompt with platform awareness
+        system_prompt = (
+            "You are a Local LLM built into an advanced Investment Tools platform. "
+            "You are deeply integrated with the platform's API which fetches live financial data, fundamental KPIs, and global stock lists (like the S&P 500) directly from the internet. "
+            "You can provide information regarding a specific company or domain, summarize complex financial data, and extract valuable internet-fetched insights from the provided context."
+        )
+        
         # TinyLlama Chat Format
-        full_prompt = f"<|system|>\nYou are a helpful financial assistant.<|end|>\n<|user|>\n{context_str}\nQuestion: {clean_prompt}<|end|>\n<|assistant|>\n"
+        full_prompt = f"<|system|>\n{system_prompt}<|end|>\n<|user|>\n{context_str}\nQuestion: {clean_prompt}<|end|>\n<|assistant|>\n"
         
         try:
             from llama_cpp import Llama
