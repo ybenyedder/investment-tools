@@ -113,3 +113,34 @@ def test_analyze_assets_ai_and_advanced_metrics():
     # Check data sanity
     assert msft_data["rl_backtest_accuracy"] >= 0
     assert msft_data["tam_b"] >= 0
+
+def test_analyze_assets_bachelier():
+    """Test that the Bachelier model (Arithmetic Brownian Motion) estimations are returned."""
+    response = client.post("/api/analyze?tickers=AAPL")
+    assert response.status_code == 200
+    data = response.json()
+    aapl_data = data["analysis"][0]
+    
+    assert "bachelier_min_1y_estimation" in aapl_data
+    assert "bachelier_max_1y_estimation" in aapl_data
+    
+    if aapl_data["volatility_risk"] > 0:
+        assert aapl_data["bachelier_min_1y_estimation"] < aapl_data["bachelier_max_1y_estimation"]
+
+def test_chat_endpoint():
+    """Test the /api/chat endpoint payload serialization and response handling."""
+    payload = {
+        "prompt": "<script>alert('xss')</script> Which is the best company?",
+        "context": [{"ticker": "AAPL", "current_price": 150, "tam_b": 500, "rl_action": "BUY"}]
+    }
+    response = client.post("/api/chat", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    
+    # It should either return a valid response or an error (e.g. model downloading).
+    # It should not return a 500 error.
+    assert "response" in data or "error" in data
+    
+    # If the response is generated, ensure bleach stripped the script tags
+    if "response" in data:
+        assert "<script>" not in data["response"]

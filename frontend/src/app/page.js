@@ -63,6 +63,14 @@ export default function Home() {
     setChatLoading(false);
   };
 
+  const handleCompanySelect = (e) => {
+    const selected = e.target.value;
+    if (selected) {
+      setTickers((prev) => prev ? prev + "," + selected : selected);
+      e.target.value = "";
+    }
+  };
+
   return (
     <main style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif' }}>
       <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>Investment Analysis Dashboard</h1>
@@ -74,6 +82,22 @@ export default function Home() {
           <button onClick={() => setTickers("NVDA,AMD,INTC,TSM,ASML")} style={btnStyle}>AI / Semiconductors</button>
           <button onClick={() => setTickers("FLNC,ENPH,SEDG,TSLA,ALB")} style={btnStyle}>Power Storage</button>
           <button onClick={() => setTickers("SPY,VGK,VWO,INDA,MCHI")} style={btnStyle}>Global ETFs</button>
+          <select 
+            onChange={handleCompanySelect}
+            style={{ padding: '0.4rem 0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', color: 'black' }}
+            defaultValue=""
+          >
+            <option value="" disabled>+ Add Company</option>
+            {universe && Object.keys(universe).map((assetClass) => (
+              Object.keys(universe[assetClass]).map((category) => (
+                <optgroup key={`${assetClass}-${category}`} label={`${assetClass} - ${category}`}>
+                  {universe[assetClass][category].map((ticker) => (
+                    <option key={ticker} value={ticker}>{ticker}</option>
+                  ))}
+                </optgroup>
+              ))
+            ))}
+          </select>
         </div>
         <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', marginBottom: '1rem' }}>
           <input 
