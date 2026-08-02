@@ -80,13 +80,13 @@ export default function Home() {
             type="text" 
             value={tickers}
             onChange={(e) => setTickers(e.target.value)}
-            style={{ flex: 1, padding: '0.5rem' }}
+            style={{ flex: 1, padding: '0.5rem', color: 'black' }}
             placeholder="AAPL, MSFT, TSLA..."
           />
           <select 
             value={quantMethod} 
             onChange={(e) => setQuantMethod(e.target.value)}
-            style={{ padding: '0.5rem', borderRadius: '4px' }}
+            style={{ padding: '0.5rem', borderRadius: '4px', color: 'black' }}
           >
             <option value="sharpe">Sharpe Ratio</option>
             <option value="sortino">Sortino Ratio</option>
@@ -95,7 +95,7 @@ export default function Home() {
           <select 
             value={stochasticModel} 
             onChange={(e) => setStochasticModel(e.target.value)}
-            style={{ padding: '0.5rem', borderRadius: '4px', backgroundColor: '#e0f2fe' }}
+            style={{ padding: '0.5rem', borderRadius: '4px', backgroundColor: '#e0f2fe', color: 'black' }}
           >
             <option value="bs">Black-Scholes (GBM)</option>
             <option value="bachelier">Bachelier Model (ABM)</option>
@@ -119,7 +119,7 @@ export default function Home() {
             value={chatPrompt}
             onChange={(e) => setChatPrompt(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && askAi()}
-            style={{ flex: 1, padding: '0.5rem', borderRadius: '4px', border: '1px solid #c7d2fe' }}
+            style={{ flex: 1, padding: '0.5rem', borderRadius: '4px', border: '1px solid #c7d2fe', color: 'black' }}
             placeholder="e.g. Which of these AI companies has the highest TAM?"
           />
           <button 
