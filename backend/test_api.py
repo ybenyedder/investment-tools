@@ -145,3 +145,43 @@ def test_chat_endpoint():
     # If the response is generated, ensure bleach stripped the script tags
     if "response" in data:
         assert "<script>" not in data["response"]
+
+def test_analyze_assets_fundamentals():
+    """Test that fundamental KPIs like PEG, ROE, DTI, Margins, and FCF are present in the response."""
+    response = client.post("/api/analyze?tickers=AAPL")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["analysis"]) > 0
+    
+    aapl_data = data["analysis"][0]
+    # Check that keys exist (value can be None depending on yfinance data availability, but keys must exist)
+    expected_keys = [
+        "peg_ratio", "return_on_equity", "debt_to_equity", 
+        "profit_margin", "operating_margin", "free_cash_flow", "total_debt"
+    ]
+    for key in expected_keys:
+        assert key in aapl_data
+
+def test_chat_endpoint_empty_prompt():
+    """Test that the /api/chat endpoint handles empty prompts securely and doesn't crash."""
+    payload = {
+        "prompt": "   ",
+        "context": [{"ticker": "AAPL", "current_price": 150}]
+    }
+    response = client.post("/api/chat", json=payload)
+    # The server might return a 400 or just a graceful error response, but should not 500
+    assert response.status_code in [200, 400]
+    data = response.json()
+    if response.status_code == 200:
+        assert "error" in data or "response" in data
+
+def test_analyze_assets_empty_tickers():
+    """Test how the analyze endpoint handles requests with no tickers passed."""
+    response = client.post("/api/analyze")
+    # It should fall back to the default Query parameter ["AAPL", "MSFT"]
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["analysis"]) == 2
+    tickers = [item["ticker"] for item in data["analysis"]]
+    assert "AAPL" in tickers
+    assert "MSFT" in tickers
