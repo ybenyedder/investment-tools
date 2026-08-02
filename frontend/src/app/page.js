@@ -71,6 +71,8 @@ export default function Home() {
                   <th style={{ padding: '0.5rem' }}>Exp. Return</th>
                   <th style={{ padding: '0.5rem' }}>Risk (Vol)</th>
                   <th style={{ padding: '0.5rem' }}>Sharpe Ratio</th>
+                  <th style={{ padding: '0.5rem' }}>1Y BS Min</th>
+                  <th style={{ padding: '0.5rem' }}>1Y BS Max</th>
                   <th style={{ padding: '0.5rem' }}>Analyst Target</th>
                 </tr>
               </thead>
@@ -81,7 +83,9 @@ export default function Home() {
                     <td style={{ padding: '0.5rem' }}>{(item.historical_expected_return * 100).toFixed(2)}%</td>
                     <td style={{ padding: '0.5rem' }}>{(item.volatility_risk * 100).toFixed(2)}%</td>
                     <td style={{ padding: '0.5rem' }}>{item.sharpe_ratio.toFixed(2)}</td>
-                    <td style={{ padding: '0.5rem' }}>{item.analyst_target_price ? `$${item.analyst_target_price}` : 'N/A'}</td>
+                    <td style={{ padding: '0.5rem' }}>{item.bs_min_1y_estimation ? `$${item.bs_min_1y_estimation.toFixed(2)}` : 'N/A'}</td>
+                    <td style={{ padding: '0.5rem' }}>{item.bs_max_1y_estimation ? `$${item.bs_max_1y_estimation.toFixed(2)}` : 'N/A'}</td>
+                    <td style={{ padding: '0.5rem' }}>{item.analyst_target_price ? `$${item.analyst_target_price.toFixed(2)}` : 'N/A'}</td>
                   </tr>
                 ))}
               </tbody>
