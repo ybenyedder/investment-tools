@@ -8,6 +8,7 @@ services:
       - "8000:8000"
     environment:
       - PORT=8000
+      - ALLOWED_ORIGINS=http://localhost:3000,https://stock.webtvmedia.net,http://100.107.129.74:3000
     restart: always
 
   frontend:
@@ -15,8 +16,7 @@ services:
       context: ./frontend
     ports:
       - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+
     depends_on:
       - backend
     restart: always

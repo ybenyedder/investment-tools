@@ -17,7 +17,7 @@ export default function Home() {
   const btnStyle = { padding: '0.4rem 0.8rem', backgroundColor: '#e2e8f0', color: '#1e293b', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9em' };
 
   useEffect(() => {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const apiUrl = "";
     fetch(`${apiUrl}/api/universe`)
       .then(res => res.json())
       .then(data => setUniverse(data))
@@ -29,7 +29,7 @@ export default function Home() {
     try {
       const tickerList = tickers.split(',').map(t => t.trim()).filter(Boolean);
       const query = tickerList.map(t => `tickers=${t}`).join('&') + `&quant_method=${quantMethod}`;
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const apiUrl = "";
       const res = await fetch(`${apiUrl}/api/analyze?${query}`, {
         method: 'POST'
       });
@@ -46,7 +46,7 @@ export default function Home() {
     setChatLoading(true);
     setChatResponse("");
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const apiUrl = "";
       const res = await fetch(`${apiUrl}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
