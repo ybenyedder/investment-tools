@@ -270,3 +270,16 @@ def test_chat_endpoint_intel_stock_info():
     if "response" in data:
         # Check that the model responded somewhat reasonably and didn't crash
         assert len(data["response"]) > 0
+
+def test_analyze_assets_news_impact():
+    """Test that the WhatsApp bot news correlation engine successfully appends news_impact_score."""
+    response = client.post("/api/analyze?tickers=AAPL")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["analysis"]) > 0
+    
+    aapl_data = data["analysis"][0]
+    assert "news_impact_score" in aapl_data
+    assert "news_count" in aapl_data
+    assert -1.0 <= aapl_data["news_impact_score"] <= 1.0
+    assert aapl_data["news_count"] >= 0
