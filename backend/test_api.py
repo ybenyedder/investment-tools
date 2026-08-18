@@ -271,7 +271,11 @@ def test_chat_endpoint_intel_stock_info():
         # Check that the model responded somewhat reasonably and didn't crash
         assert len(data["response"]) > 0
 
-def test_analyze_assets_news_impact():
+from unittest.mock import patch
+
+@patch("news_correlation.fetch_recent_news")
+def test_analyze_assets_news_impact(mock_fetch_news):
+    mock_fetch_news.return_value = [{"id":"1","text":"Apple is a great company with high growth.","distance":0.5,"timestamp":"2023"}]
     """Test that the WhatsApp bot news correlation engine successfully appends news_impact_score."""
     response = client.post("/api/analyze?tickers=AAPL")
     assert response.status_code == 200
