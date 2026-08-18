@@ -277,6 +277,7 @@ def analyze_assets(
             "volatility_risk": risk,
             "news_impact_score": news_data["impact_score"],
             "news_count": news_data["news_count"],
+            "news_list": news_data.get("news_list", []),
             "sharpe_ratio": (exp_return - risk_free_rate) / risk if risk > 0 else 0,
             "analyst_target_price": target_mean_price,
             "analyst_expected_return": analyst_upside,

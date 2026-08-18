@@ -13,6 +13,7 @@ export default function Home() {
   const [chatPrompt, setChatPrompt] = useState("");
   const [chatResponse, setChatResponse] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
+  const [selectedCompanyInfo, setSelectedCompanyInfo] = useState(null);
 
   useEffect(() => {
     const apiUrl = "";
@@ -215,7 +216,7 @@ export default function Home() {
               </thead>
               <tbody className="text-slate-600">
                 {data.top_10.map((item, i) => (
-                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                  <tr key={i} onClick={() => setSelectedCompanyInfo(item)} className="border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer">
                     <td className="p-3"><strong className="text-slate-900 text-base">{item.ticker}</strong><br/><small className="text-slate-500">{item.name}</small></td>
                     <td className="p-3 bg-indigo-50/30 border-l border-r border-indigo-50">
                       <div className="flex flex-col items-center">
@@ -323,6 +324,111 @@ export default function Home() {
           </div>
         </div>
       )}
+          {selectedCompanyInfo && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b border-slate-200 flex justify-between items-center bg-slate-50 rounded-t-2xl">
+              <div>
+                <h2 className="text-3xl font-bold text-slate-800">{selectedCompanyInfo.name} <span className="text-slate-500 text-xl font-normal ml-2">({selectedCompanyInfo.ticker})</span></h2>
+                <div className="flex gap-3 mt-2 text-sm text-slate-600">
+                  <span>{selectedCompanyInfo.sector}</span>
+                  <span>&bull;</span>
+                  <span>{selectedCompanyInfo.country}</span>
+                  <span>&bull;</span>
+                  <span className="font-semibold text-slate-900">Current Price: ${selectedCompanyInfo.current_price?.toFixed(2)}</span>
+                </div>
+              </div>
+              <button onClick={() => setSelectedCompanyInfo(null)} className="text-slate-400 hover:text-slate-700 p-2 text-2xl font-bold">&times;</button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto flex-1 bg-white">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                
+                {/* Left Column: Quantitative & Fundamentals */}
+                <div className="space-y-6">
+                  <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
+                    <h3 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">Quantitative & Risk</h3>
+                    <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
+                      <div className="text-slate-500">Expected Return</div>
+                      <div className="font-semibold text-slate-900 text-right">{(selectedCompanyInfo.historical_expected_return * 100).toFixed(2)}%</div>
+                      <div className="text-slate-500">Volatility (Risk)</div>
+                      <div className="font-semibold text-slate-900 text-right">{(selectedCompanyInfo.volatility_risk * 100).toFixed(2)}%</div>
+                      <div className="text-slate-500">Sharpe Ratio</div>
+                      <div className="font-semibold text-slate-900 text-right">{selectedCompanyInfo.sharpe_ratio?.toFixed(2)}</div>
+                      <div className="text-slate-500">Sortino Ratio</div>
+                      <div className="font-semibold text-slate-900 text-right">{selectedCompanyInfo.sortino_ratio?.toFixed(2)}</div>
+                      <div className="text-slate-500">Treynor Ratio</div>
+                      <div className="font-semibold text-slate-900 text-right">{selectedCompanyInfo.treynor_ratio?.toFixed(2)}</div>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
+                    <h3 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">AI Forecast & Estimates</h3>
+                    <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
+                      <div className="text-slate-500">SARIMA 1Y Forecast</div>
+                      <div className="font-bold text-indigo-700 text-right">${selectedCompanyInfo.sarima_1y_forecast?.toFixed(2)}</div>
+                      <div className="text-slate-500">RL Agent Action</div>
+                      <div className="font-semibold text-slate-900 text-right">{selectedCompanyInfo.rl_action} ({selectedCompanyInfo.rl_confidence?.toFixed(0)}%)</div>
+                      <div className="text-slate-500">BS (GBM) 1Y Max</div>
+                      <div className="font-semibold text-slate-900 text-right">${selectedCompanyInfo.bs_max_1y_estimation?.toFixed(2)}</div>
+                      <div className="text-slate-500">Bachelier 1Y Max</div>
+                      <div className="font-semibold text-slate-900 text-right">${selectedCompanyInfo.bachelier_max_1y_estimation?.toFixed(2)}</div>
+                      <div className="text-slate-500">Analyst Target</div>
+                      <div className="font-semibold text-slate-900 text-right">{selectedCompanyInfo.analyst_target_price ? '$'+selectedCompanyInfo.analyst_target_price.toFixed(2) : 'N/A'}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column: WhatsApp News & Correlation */}
+                <div className="space-y-6">
+                  <div className="bg-indigo-50/50 rounded-xl p-5 border border-indigo-100">
+                    <div className="flex justify-between items-center mb-4 border-b border-indigo-100 pb-2">
+                      <h3 className="text-lg font-bold text-indigo-900">WhatsApp Real-Time News</h3>
+                      <span className={"px-3 py-1 rounded-full text-xs font-bold " + (selectedCompanyInfo.news_impact_score > 0.2 ? "bg-green-100 text-green-800" : selectedCompanyInfo.news_impact_score < -0.2 ? "bg-red-100 text-red-800" : "bg-slate-200 text-slate-700")}>
+                        Impact Score: {selectedCompanyInfo.news_impact_score > 0 ? '+' : ''}{(selectedCompanyInfo.news_impact_score * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      {selectedCompanyInfo.news_list && selectedCompanyInfo.news_list.length > 0 ? (
+                        selectedCompanyInfo.news_list.map((news, idx) => (
+                          <div key={idx} className="bg-white p-4 rounded-lg shadow-sm border border-slate-100 text-sm text-slate-700 leading-relaxed">
+                            {news}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-100 text-sm text-slate-500 italic text-center">
+                          {selectedCompanyInfo.latest_news || "No recent news found in WhatsApp DB."}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
+                    <h3 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">Fundamentals ($B)</h3>
+                    <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
+                      <div className="text-slate-500">SOM / SAM / TAM</div>
+                      <div className="font-semibold text-slate-900 text-right">{selectedCompanyInfo.som_b?.toFixed(1)} / {selectedCompanyInfo.sam_b?.toFixed(1)} / {selectedCompanyInfo.tam_b?.toFixed(1)}</div>
+                      <div className="text-slate-500">Free Cash Flow</div>
+                      <div className="font-semibold text-slate-900 text-right">{selectedCompanyInfo.free_cash_flow ? (selectedCompanyInfo.free_cash_flow/1e9).toFixed(1) : 'N/A'}</div>
+                      <div className="text-slate-500">Total Debt</div>
+                      <div className="font-semibold text-slate-900 text-right">{selectedCompanyInfo.total_debt ? (selectedCompanyInfo.total_debt/1e9).toFixed(1) : 'N/A'}</div>
+                      <div className="text-slate-500">Profit Margin</div>
+                      <div className="font-semibold text-slate-900 text-right">{selectedCompanyInfo.profit_margin ? (selectedCompanyInfo.profit_margin*100).toFixed(1)+'%' : 'N/A'}</div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+            
+            <div className="p-4 border-t border-slate-200 bg-slate-50 rounded-b-2xl text-right">
+              <button onClick={() => setSelectedCompanyInfo(null)} className="px-6 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 font-medium transition-colors cursor-pointer">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </main>
   );
 }

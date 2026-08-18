@@ -10,7 +10,6 @@ PyPortfolioOpt
 pytest
 httpx
 bleach
-llama-cpp-python
 huggingface-hub
 pymongo
 chromadb

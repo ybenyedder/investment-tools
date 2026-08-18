@@ -75,7 +75,7 @@ def calculate_news_impact(ticker: str, name: str):
     """
     news_items = fetch_recent_news(ticker, name)
     if not news_items:
-        return {"impact_score": 0.0, "news_count": 0, "latest_news": "No recent WhatsApp news"}
+        return {"impact_score": 0.0, "news_count": 0, "latest_news": "No recent WhatsApp news", "news_list": []}
 
     # Dummy/heuristic sentiment scoring for proof-of-concept
     # A real system would use a LLM or FinBERT here to score the text.
@@ -101,6 +101,7 @@ def calculate_news_impact(ticker: str, name: str):
     return {
         "impact_score": normalized_score,
         "news_count": len(news_items),
-        "latest_news": news_items[0]['text'][:100] + "..." if news_items else "N/A"
+        "latest_news": news_items[0]['text'][:100] + "..." if news_items else "N/A",
+        "news_list": [item['text'] for item in news_items]
     }
 
