@@ -13,8 +13,6 @@ export default function Home() {
   const [chatPrompt, setChatPrompt] = useState("");
   const [chatResponse, setChatResponse] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
-  
-  const btnStyle = { padding: '0.4rem 0.8rem', backgroundColor: '#e2e8f0', color: '#1e293b', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9em' };
 
   useEffect(() => {
     const apiUrl = "";
@@ -80,15 +78,15 @@ export default function Home() {
   };
 
   return (
-    <main style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif' }}>
-      <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>Investment Analysis Dashboard</h1>
+    <main className="p-8 font-sans bg-white min-h-screen text-slate-900">
+      <h1 className="text-4xl font-bold mb-6">Investment Analysis Dashboard</h1>
       
-      <div style={{ marginBottom: '2rem', padding: '1rem', backgroundColor: '#f5f5f5', borderRadius: '8px' }}>
-        <h3>Select Tickers and Quantitative Method</h3>
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+      <div className="mb-8 p-6 bg-slate-50 rounded-xl shadow-sm border border-slate-200">
+        <h3 className="text-xl font-semibold mb-4 text-slate-800">Select Tickers and Quantitative Method</h3>
+        <div className="flex gap-2 mb-4 flex-wrap">
           <select 
             onChange={handleDomainSelect}
-            style={{ padding: '0.4rem 0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', color: 'black' }}
+            className="py-2 px-3 rounded-md border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
             defaultValue=""
           >
             <option value="" disabled>Load Full Domain / Market...</option>
@@ -104,7 +102,7 @@ export default function Home() {
           </select>
           <select 
             onChange={handleCompanySelect}
-            style={{ padding: '0.4rem 0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', color: 'black' }}
+            className="py-2 px-3 rounded-md border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
             defaultValue=""
           >
             <option value="" disabled>+ Add Company</option>
@@ -119,18 +117,18 @@ export default function Home() {
             ))}
           </select>
         </div>
-        <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', marginBottom: '1rem' }}>
+        <div className="flex gap-4 mt-2 mb-6">
           <input 
             type="text" 
             value={tickers}
             onChange={(e) => setTickers(e.target.value)}
-            style={{ flex: 1, padding: '0.5rem', color: 'black' }}
+            className="flex-1 p-3 rounded-md border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
             placeholder="AAPL, MSFT, TSLA..."
           />
           <select 
             value={quantMethod} 
             onChange={(e) => setQuantMethod(e.target.value)}
-            style={{ padding: '0.5rem', borderRadius: '4px', color: 'black' }}
+            className="p-3 rounded-md border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
           >
             <option value="sharpe">Sharpe Ratio</option>
             <option value="sortino">Sortino Ratio</option>
@@ -139,7 +137,7 @@ export default function Home() {
           <select 
             value={stochasticModel} 
             onChange={(e) => setStochasticModel(e.target.value)}
-            style={{ padding: '0.5rem', borderRadius: '4px', backgroundColor: '#e0f2fe', color: 'black' }}
+            className="p-3 rounded-md border border-sky-300 bg-sky-50 text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
           >
             <option value="bs">Black-Scholes (GBM)</option>
             <option value="bachelier">Bachelier Model (ABM)</option>
@@ -148,102 +146,100 @@ export default function Home() {
         <button 
           onClick={analyze} 
           disabled={loading}
-          style={{ padding: '0.5rem 1rem', backgroundColor: '#0070f3', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 transition-colors text-white font-medium rounded-md cursor-pointer disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed shadow-sm"
         >
           {loading ? 'Analyzing...' : 'Run Analysis'}
         </button>
       </div>
       
       {/* Ask Local LLM Section */}
-      <div style={{ marginBottom: '2rem', padding: '1rem', backgroundColor: '#eef2ff', borderRadius: '8px', border: '1px solid #c7d2fe' }}>
-        <h3 style={{ color: '#3730a3', marginTop: 0 }}>Ask the Local LLM (Investment Assistant)</h3>
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+      <div className="mb-8 p-6 bg-indigo-50 rounded-xl shadow-sm border border-indigo-200">
+        <h3 className="text-indigo-900 mt-0 mb-4 text-xl font-semibold">Ask the Local LLM (Investment Assistant)</h3>
+        <div className="flex gap-4 mb-4">
           <input 
             type="text" 
             value={chatPrompt}
             onChange={(e) => setChatPrompt(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && askAi()}
-            style={{ flex: 1, padding: '0.5rem', borderRadius: '4px', border: '1px solid #c7d2fe', color: 'black' }}
+            className="flex-1 p-3 rounded-md border border-indigo-200 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
             placeholder="e.g. Which of these AI companies has the highest TAM?"
           />
           <button 
             onClick={askAi} 
             disabled={chatLoading}
-            style={{ padding: '0.5rem 1rem', backgroundColor: '#4f46e5', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 transition-colors text-white font-medium rounded-md cursor-pointer disabled:bg-indigo-300 disabled:cursor-not-allowed shadow-sm"
           >
             {chatLoading ? 'Thinking...' : 'Ask AI'}
           </button>
         </div>
         {chatResponse && (
-          <div style={{ padding: '1rem', backgroundColor: 'white', borderRadius: '4px', border: '1px solid #e0e7ff', color: '#1e293b' }}>
-            <strong style={{ color: '#4f46e5' }}>LLM Response:</strong>
-            <p style={{ marginTop: '0.5rem', whiteSpace: 'pre-wrap' }}>{chatResponse}</p>
+          <div className="p-5 bg-white rounded-lg shadow-inner border border-indigo-100 text-slate-800 leading-relaxed">
+            <strong className="text-indigo-700 uppercase tracking-wide text-xs">LLM Response:</strong>
+            <p className="mt-2 whitespace-pre-wrap">{chatResponse}</p>
           </div>
         )}
       </div>
 
       {data && data.error && (
-        <div style={{ color: 'red' }}>Error: {data.error}</div>
+        <div className="text-red-700 bg-red-50 p-4 rounded-md border border-red-200 font-semibold mb-6 shadow-sm">
+          Error: {data.error}
+        </div>
       )}
 
       {data && data.top_10 && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-          <div>
-            <h2>Top Rankings (Risk vs Expectation)</h2>
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+          <div className="overflow-x-auto bg-white p-6 rounded-xl border border-slate-200 shadow-sm col-span-1 xl:col-span-2">
+            <h2 className="text-2xl mb-6 font-bold text-slate-800 border-b border-slate-200 pb-2">Top Rankings (Risk vs Expectation)</h2>
+            <table className="w-full border-collapse text-sm whitespace-nowrap text-left">
               <thead>
-                <tr style={{ backgroundColor: '#f0f0f0', textAlign: 'left' }}>
-                  <th style={{ padding: '0.5rem' }}>Asset</th>
-                  <th style={{ padding: '0.5rem' }}>Exp. Return</th>
-                  <th style={{ padding: '0.5rem' }}>Risk (Vol)</th>
-                  <th style={{ padding: '0.5rem' }}>Sharpe Ratio</th>
-                  <th style={{ padding: '0.5rem' }}>Sortino</th>
-                  <th style={{ padding: '0.5rem' }}>Treynor</th>
-                  <th style={{ padding: '0.5rem' }}>1Y SARIMA</th>
-                  <th style={{ padding: '0.5rem' }}>RL Agent Action</th>
-                  <th style={{ padding: '0.5rem' }}>RL Acc (Past)</th>
-                  <th style={{ padding: '0.5rem' }}>Correlated Asset</th>
-                  <th style={{ padding: '0.5rem' }}>SOM/SAM/TAM ($B)</th>
-                  <th style={{ padding: '0.5rem' }}>PEG</th>
-                  <th style={{ padding: '0.5rem' }}>ROE</th>
-                  <th style={{ padding: '0.5rem' }}>DTI (Debt/Eq)</th>
-                  <th style={{ padding: '0.5rem' }}>Margins (Prof/Op)</th>
-                  <th style={{ padding: '0.5rem' }}>FCF/Debt ($B)</th>
-                  <th style={{ padding: '0.5rem' }}>1Y {stochasticModel === 'bs' ? 'BS' : 'Bachelier'} Min/Max</th>
+                <tr className="bg-slate-50 text-slate-600 font-semibold uppercase text-xs tracking-wider border-b border-slate-200">
+                  <th className="p-3 rounded-tl-md">Asset</th>
+                  <th className="p-3">Exp. Return</th>
+                  <th className="p-3">Risk (Vol)</th>
+                  <th className="p-3">Sharpe Ratio</th>
+                  <th className="p-3">Sortino</th>
+                  <th className="p-3">Treynor</th>
+                  <th className="p-3">1Y SARIMA</th>
+                  <th className="p-3">RL Agent Action</th>
+                  <th className="p-3">RL Acc (Past)</th>
+                  <th className="p-3">Correlated Asset</th>
+                  <th className="p-3">SOM/SAM/TAM ($B)</th>
+                  <th className="p-3">PEG</th>
+                  <th className="p-3">ROE</th>
+                  <th className="p-3">DTI (Debt/Eq)</th>
+                  <th className="p-3">Margins (Prof/Op)</th>
+                  <th className="p-3">FCF/Debt ($B)</th>
+                  <th className="p-3 rounded-tr-md">1Y {stochasticModel === 'bs' ? 'BS' : 'Bachelier'} Min/Max</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="text-slate-600">
                 {data.top_10.map((item, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid #ddd' }}>
-                    <td style={{ padding: '0.5rem' }}><strong>{item.ticker}</strong><br/><small>{item.name}</small></td>
-                    <td style={{ padding: '0.5rem' }}>{(item.historical_expected_return * 100).toFixed(2)}%</td>
-                    <td style={{ padding: '0.5rem' }}>{(item.volatility_risk * 100).toFixed(2)}%</td>
-                    <td style={{ padding: '0.5rem', fontWeight: quantMethod === 'sharpe' ? 'bold' : 'normal', backgroundColor: quantMethod === 'sharpe' ? '#e0f2fe' : 'transparent' }}>{item.sharpe_ratio?.toFixed(2)}</td>
-                    <td style={{ padding: '0.5rem', fontWeight: quantMethod === 'sortino' ? 'bold' : 'normal', backgroundColor: quantMethod === 'sortino' ? '#e0f2fe' : 'transparent' }}>{item.sortino_ratio?.toFixed(2)}</td>
-                    <td style={{ padding: '0.5rem', fontWeight: quantMethod === 'treynor' ? 'bold' : 'normal', backgroundColor: quantMethod === 'treynor' ? '#e0f2fe' : 'transparent' }}>{item.treynor_ratio?.toFixed(2)}</td>
-                    <td style={{ padding: '0.5rem', color: '#8884d8', fontWeight: 'bold' }}>{item.sarima_1y_forecast ? `$${item.sarima_1y_forecast.toFixed(2)}` : 'N/A'}</td>
-                    <td style={{ padding: '0.5rem' }}>
-                      <span style={{ 
-                        padding: '4px 8px', borderRadius: '4px', fontSize: '0.85em', fontWeight: 'bold',
-                        backgroundColor: item.rl_action?.includes('BUY') ? '#d4edda' : item.rl_action?.includes('SELL') ? '#f8d7da' : '#fff3cd',
-                        color: item.rl_action?.includes('BUY') ? '#155724' : item.rl_action?.includes('SELL') ? '#721c24' : '#856404'
-                      }}>
+                  <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="p-3"><strong className="text-slate-900 text-base">{item.ticker}</strong><br/><small className="text-slate-500">{item.name}</small></td>
+                    <td className="p-3 font-medium text-slate-800">{(item.historical_expected_return * 100).toFixed(2)}%</td>
+                    <td className="p-3 font-medium text-slate-800">{(item.volatility_risk * 100).toFixed(2)}%</td>
+                    <td className={`p-3 ${quantMethod === 'sharpe' ? 'font-bold bg-sky-50 text-sky-900 rounded-l-sm' : ''}`}>{item.sharpe_ratio?.toFixed(2)}</td>
+                    <td className={`p-3 ${quantMethod === 'sortino' ? 'font-bold bg-sky-50 text-sky-900 rounded-l-sm' : ''}`}>{item.sortino_ratio?.toFixed(2)}</td>
+                    <td className={`p-3 ${quantMethod === 'treynor' ? 'font-bold bg-sky-50 text-sky-900 rounded-l-sm' : ''}`}>{item.treynor_ratio?.toFixed(2)}</td>
+                    <td className="p-3 text-indigo-600 font-bold bg-indigo-50/30">{item.sarima_1y_forecast ? `$${item.sarima_1y_forecast.toFixed(2)}` : 'N/A'}</td>
+                    <td className="p-3">
+                      <span className={`px-2 py-1.5 rounded-md text-xs font-bold tracking-wide ${item.rl_action?.includes('BUY') ? 'bg-green-100 text-green-800' : item.rl_action?.includes('SELL') ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
                         {item.rl_action} ({item.rl_confidence?.toFixed(0)}%)
                       </span>
                     </td>
-                    <td style={{ padding: '0.5rem' }}>{item.rl_backtest_accuracy ? `${item.rl_backtest_accuracy.toFixed(0)}%` : 'N/A'}</td>
-                    <td style={{ padding: '0.5rem' }} title={`Corr: ${item.highest_corr_value?.toFixed(2)}`}>{item.highest_corr_ticker}</td>
-                    <td style={{ padding: '0.5rem', fontSize: '0.9em' }}>{item.som_b?.toFixed(1)} / {item.sam_b?.toFixed(1)} / {item.tam_b?.toFixed(1)}</td>
-                    <td style={{ padding: '0.5rem' }}>{item.peg_ratio ? item.peg_ratio.toFixed(2) : 'N/A'}</td>
-                    <td style={{ padding: '0.5rem' }}>{item.return_on_equity ? (item.return_on_equity * 100).toFixed(1) + '%' : 'N/A'}</td>
-                    <td style={{ padding: '0.5rem' }}>{item.debt_to_equity ? item.debt_to_equity.toFixed(1) + '%' : 'N/A'}</td>
-                    <td style={{ padding: '0.5rem', fontSize: '0.9em' }}>
+                    <td className="p-3 font-medium">{item.rl_backtest_accuracy ? `${item.rl_backtest_accuracy.toFixed(0)}%` : 'N/A'}</td>
+                    <td className="p-3 text-slate-500" title={`Corr: ${item.highest_corr_value?.toFixed(2)}`}>{item.highest_corr_ticker}</td>
+                    <td className="p-3 text-xs text-slate-500">{item.som_b?.toFixed(1)} / {item.sam_b?.toFixed(1)} / {item.tam_b?.toFixed(1)}</td>
+                    <td className="p-3 text-slate-700">{item.peg_ratio ? item.peg_ratio.toFixed(2) : 'N/A'}</td>
+                    <td className="p-3">{item.return_on_equity ? (item.return_on_equity * 100).toFixed(1) + '%' : 'N/A'}</td>
+                    <td className="p-3">{item.debt_to_equity ? item.debt_to_equity.toFixed(1) + '%' : 'N/A'}</td>
+                    <td className="p-3 text-xs text-slate-500">
                       {item.profit_margin ? (item.profit_margin * 100).toFixed(1) + '%' : 'N/A'} / {item.operating_margin ? (item.operating_margin * 100).toFixed(1) + '%' : 'N/A'}
                     </td>
-                    <td style={{ padding: '0.5rem', fontSize: '0.9em' }}>
+                    <td className="p-3 text-xs text-slate-500">
                       {item.free_cash_flow ? (item.free_cash_flow / 1e9).toFixed(1) : 'N/A'} / {item.total_debt ? (item.total_debt / 1e9).toFixed(1) : 'N/A'}
                     </td>
-                    <td style={{ padding: '0.5rem', fontSize: '0.9em' }}>
+                    <td className="p-3 text-sm text-slate-700 font-medium">
                       {stochasticModel === 'bs' ? (
                         `${item.bs_min_1y_estimation ? `$${item.bs_min_1y_estimation.toFixed(2)}` : 'N/A'} - ${item.bs_max_1y_estimation ? `$${item.bs_max_1y_estimation.toFixed(2)}` : 'N/A'}`
                       ) : (
@@ -256,23 +252,25 @@ export default function Home() {
             </table>
           </div>
 
-          <div>
-            <h2>Historical Price Trends (10 Years)</h2>
-            <div style={{ width: '100%', height: '400px', backgroundColor: '#fafafa', padding: '1rem', borderRadius: '8px' }}>
+          <div className="col-span-1 xl:col-span-1">
+            <h2 className="text-2xl mb-4 font-bold text-slate-800 border-b border-slate-200 pb-2">Historical Price Trends (10 Years)</h2>
+            <div className="w-full h-[450px] bg-slate-50 p-6 rounded-xl shadow-inner border border-slate-200">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data.plot_data}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="Date" tick={{fontSize: 12}} tickFormatter={(val) => val.substring(0,4)} />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="Date" tick={{fontSize: 12, fill: '#64748b'}} tickFormatter={(val) => val.substring(0,4)} axisLine={{stroke: '#cbd5e1'}} />
+                  <YAxis tick={{fontSize: 12, fill: '#64748b'}} axisLine={{stroke: '#cbd5e1'}} tickFormatter={(val) => `$${val}`} />
+                  <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                  <Legend wrapperStyle={{ paddingTop: '20px' }} />
                   {tickers.split(',').map(t => t.trim()).filter(Boolean).map((ticker, i) => (
                     <Line 
                       key={ticker} 
                       type="monotone" 
                       dataKey={ticker} 
-                      stroke={`hsl(${(i * 360) / 10}, 70%, 50%)`} 
+                      stroke={`hsl(${(i * 360) / Math.max(1, tickers.split(',').filter(Boolean).length)}, 75%, 55%)`} 
+                      strokeWidth={2.5}
                       dot={false}
+                      activeDot={{ r: 6 }}
                     />
                   ))}
                 </LineChart>
@@ -280,9 +278,9 @@ export default function Home() {
             </div>
           </div>
           
-          <div style={{ marginTop: '2rem' }}>
-            <h2>1-Year Price Projections: {stochasticModel === 'bs' ? 'Black-Scholes' : 'Bachelier'} Range & AI Forecasts</h2>
-            <div style={{ width: '100%', height: '400px', backgroundColor: '#111827', padding: '1rem', borderRadius: '8px', color: 'white' }}>
+          <div className="col-span-1 xl:col-span-1">
+            <h2 className="text-2xl mb-4 font-bold text-slate-800 border-b border-slate-200 pb-2">1-Year Price Projections</h2>
+            <div className="w-full h-[450px] bg-slate-900 p-6 rounded-xl shadow-lg border border-slate-800 text-white">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart 
                   layout="vertical" 
@@ -294,20 +292,20 @@ export default function Home() {
                       ? [t.bs_min_1y_estimation || t.current_price, t.bs_max_1y_estimation || t.current_price]
                       : [t.bachelier_min_1y_estimation || t.current_price, t.bachelier_max_1y_estimation || t.current_price]
                   }))}
-                  margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+                  margin={{ top: 10, right: 20, bottom: 10, left: 20 }}
                 >
-                  <CartesianGrid stroke="#374151" strokeDasharray="3 3" />
-                  <XAxis type="number" stroke="#9ca3af" tickFormatter={(val) => `$${val}`} />
-                  <YAxis dataKey="name" type="category" stroke="#9ca3af" width={60} />
-                  <Tooltip cursor={{fill: 'rgba(255,255,255,0.1)'}} formatter={(val) => Array.isArray(val) ? `Min: $${val[0].toFixed(2)} - Max: $${val[1].toFixed(2)}` : `$${val.toFixed(2)}`} />
-                  <Legend wrapperStyle={{ color: '#fff' }} />
-                  <Bar dataKey="range" name={`${stochasticModel === 'bs' ? 'Black-Scholes (GBM)' : 'Bachelier (ABM)'} 95% Expected Range (1Y)`} fill="url(#colorUv)" barSize={20} radius={[10, 10, 10, 10]} />
-                  <Scatter dataKey="current_price" name="Current Price" fill="#facc15" shape="star" />
-                  <Scatter dataKey="sarima" name="SARIMA 1Y Forecast" fill="#10b981" shape="circle" />
+                  <CartesianGrid stroke="#334155" strokeDasharray="4 4" />
+                  <XAxis type="number" stroke="#94a3b8" tickFormatter={(val) => `$${val}`} axisLine={{stroke: '#475569'}} />
+                  <YAxis dataKey="name" type="category" stroke="#f8fafc" width={60} axisLine={{stroke: '#475569'}} tick={{fontWeight: '500'}} />
+                  <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} formatter={(val) => Array.isArray(val) ? `Min: $${val[0].toFixed(2)} - Max: $${val[1].toFixed(2)}` : `$${val.toFixed(2)}`} contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px', color: '#f8fafc' }} />
+                  <Legend wrapperStyle={{ color: '#cbd5e1', paddingTop: '15px' }} />
+                  <Bar dataKey="range" name={`${stochasticModel === 'bs' ? 'Black-Scholes (GBM)' : 'Bachelier (ABM)'} 95% Expected Range (1Y)`} fill="url(#colorUv)" barSize={24} radius={[6, 6, 6, 6]} />
+                  <Scatter dataKey="current_price" name="Current Price" fill="#fbbf24" shape="star" />
+                  <Scatter dataKey="sarima" name="SARIMA 1Y Forecast" fill="#34d399" shape="circle" />
                   <defs>
                     <linearGradient id="colorUv" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="5%" stopColor={stochasticModel === 'bs' ? "#3b82f6" : "#ec4899"} stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor={stochasticModel === 'bs' ? "#8b5cf6" : "#f43f5e"} stopOpacity={0.8}/>
+                      <stop offset="5%" stopColor={stochasticModel === 'bs' ? "#3b82f6" : "#ec4899"} stopOpacity={0.9}/>
+                      <stop offset="95%" stopColor={stochasticModel === 'bs' ? "#8b5cf6" : "#f43f5e"} stopOpacity={0.9}/>
                     </linearGradient>
                   </defs>
                 </ComposedChart>
