@@ -194,6 +194,7 @@ export default function Home() {
               <thead>
                 <tr className="bg-slate-50 text-slate-600 font-semibold uppercase text-xs tracking-wider border-b border-slate-200">
                   <th className="p-3 rounded-tl-md">Asset</th>
+                  <th className="p-3 bg-indigo-50 text-indigo-900 border-l border-r border-indigo-100">WhatsApp News Impact</th>
                   <th className="p-3">Exp. Return</th>
                   <th className="p-3">Risk (Vol)</th>
                   <th className="p-3">Sharpe Ratio</th>
@@ -216,6 +217,14 @@ export default function Home() {
                 {data.top_10.map((item, i) => (
                   <tr key={i} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                     <td className="p-3"><strong className="text-slate-900 text-base">{item.ticker}</strong><br/><small className="text-slate-500">{item.name}</small></td>
+                    <td className="p-3 bg-indigo-50/30 border-l border-r border-indigo-50">
+                      <div className="flex flex-col items-center">
+                        <span className={`px-2 py-1 rounded-md font-bold text-xs ${item.news_impact_score > 0.2 ? 'bg-green-100 text-green-700' : item.news_impact_score < -0.2 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}`}>
+                          {item.news_impact_score > 0 ? '+' : ''}{(item.news_impact_score * 100).toFixed(1)}%
+                        </span>
+                        <span className="text-[10px] text-indigo-400 mt-1">{item.news_count} news</span>
+                      </div>
+                    </td>
                     <td className="p-3 font-medium text-slate-800">{(item.historical_expected_return * 100).toFixed(2)}%</td>
                     <td className="p-3 font-medium text-slate-800">{(item.volatility_risk * 100).toFixed(2)}%</td>
                     <td className={`p-3 ${quantMethod === 'sharpe' ? 'font-bold bg-sky-50 text-sky-900 rounded-l-sm' : ''}`}>{item.sharpe_ratio?.toFixed(2)}</td>

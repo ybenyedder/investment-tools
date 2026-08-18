@@ -264,6 +264,9 @@ def analyze_assets(
                 highest_corr_ticker = str(corrs.idxmax())
                 highest_corr_value = float(corrs.max())
         
+        from news_correlation import calculate_news_impact
+        news_data = calculate_news_impact(ticker, ticker_info.get("shortName", ticker))
+
         results.append({
             "ticker": ticker,
             "name": ticker_info.get("shortName", ticker),
@@ -272,6 +275,8 @@ def analyze_assets(
             "current_price": current_price,
             "historical_expected_return": exp_return,
             "volatility_risk": risk,
+            "news_impact_score": news_data["impact_score"],
+            "news_count": news_data["news_count"],
             "sharpe_ratio": (exp_return - risk_free_rate) / risk if risk > 0 else 0,
             "analyst_target_price": target_mean_price,
             "analyst_expected_return": analyst_upside,
@@ -341,7 +346,7 @@ def chat_with_llm(request: ChatRequest):
         if request.context:
             import json
             # Filter context to essential fields to prevent exceeding LLM context window limit
-            essential_keys = ["ticker", "name", "current_price", "sharpe_ratio", "analyst_target_price", "rl_action", "tam_b", "peg_ratio"]
+            essential_keys = ["ticker", "name", "current_price", "sharpe_ratio", "news_impact_score", "analyst_target_price", "rl_action", "tam_b", "peg_ratio"]
             filtered_context = [{k: item[k] for k in essential_keys if k in item} for item in request.context[:5]]
             context_json = json.dumps(filtered_context)
             # Log the full JSON to the backend console for debugging (unbuffered)

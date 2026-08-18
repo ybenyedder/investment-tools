@@ -1,0 +1,69 @@
+
+services:
+  whatsapp-bot:
+    build: .
+    container_name: whatsapp-bot
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      - ./downloads:/usr/src/app/downloads:Z
+      - ./auth:/usr/src/app/auth:Z
+      - ./backups:/usr/src/app/backups:Z
+    depends_on:
+      - mongo
+      - chromadb
+      - embeddings
+
+  mongo:
+    image: mongo:6
+    container_name: mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./data/db:/data/db:Z
+
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: chromadb
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - CHROMA_SERVER_CORS_ALLOW_ORIGINS=http://localhost:3000
+    volumes:
+      - ./data/chroma:/chroma:Z
+
+  embeddings:
+    build:
+      context: ./embedding-service
+    container_name: embeddings
+    restart: always
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./embedding-service:/app:Z
+    working_dir: /app
+    command: ["python", "main.py"]
+    environment:
+      - TRANSFORMERS_CACHE=/app/cache
+    depends_on:
+      - mongo
+
+  llamacpp:
+    image: ghcr.io/ggerganov/llama.cpp:server
+    container_name: llamacpp
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./models:/models:Z
+    environment:
+      - LLAMA_ARG_MODEL=/models/model.gguf
+      - LLAMA_ARG_HOST=0.0.0.0
+      - LLAMA_ARG_PORT=8080
+      - LLAMA_ARG_N_GPU_LAYERS=0 # Change if GPU is available
+    # command: ["--model", "/models/model.gguf", "--host", "0.0.0.0", "--port", "8080"]
