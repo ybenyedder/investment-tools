@@ -329,7 +329,7 @@ class ChatRequest(BaseModel):
     context: list = []
 
 @app.post("/api/chat")
-async def chat_with_llm(request: ChatRequest):
+def chat_with_llm(request: ChatRequest):
     """Local LLM Chat endpoint using llama-cpp-python for financial queries."""
     try:
         import bleach
@@ -339,9 +339,15 @@ async def chat_with_llm(request: ChatRequest):
         # Build prompt with context
         context_str = ""
         if request.context:
-            context_str = "Context (Top 5 Assets):\n"
-            for item in request.context[:5]:
-                context_str += f"- {item.get('ticker')}: Price ${item.get('current_price', 0):.2f}, TAM ${item.get('tam_b', 0):.1f}B, RL Action: {item.get('rl_action')}\n"
+            import json
+            # Filter context to essential fields to prevent exceeding LLM context window limit
+            essential_keys = ["ticker", "name", "current_price", "sharpe_ratio", "analyst_target_price", "rl_action", "tam_b", "peg_ratio"]
+            filtered_context = [{k: item[k] for k in essential_keys if k in item} for item in request.context[:5]]
+            context_json = json.dumps(filtered_context)
+            # Log the full JSON to the backend console for debugging (unbuffered)
+            print(f"--- INCOMING CONTEXT JSON ---\n{context_json}\n-----------------------------", flush=True)
+            
+            context_str = f"Recent Quantitative Study Results (Top Assets JSON Data):\n{context_json}\n"
         
         # System prompt with platform awareness
         system_prompt = (
@@ -351,7 +357,7 @@ async def chat_with_llm(request: ChatRequest):
         )
         
         # TinyLlama Chat Format
-        full_prompt = f"<|system|>\n{system_prompt}<|end|>\n<|user|>\n{context_str}\nQuestion: {clean_prompt}<|end|>\n<|assistant|>\n"
+        full_prompt = f"<|system|>\n{system_prompt}</s>\n<|user|>\n{context_str}\nQuestion: {clean_prompt}</s>\n<|assistant|>\n"
         
         try:
             from llama_cpp import Llama
@@ -362,9 +368,9 @@ async def chat_with_llm(request: ChatRequest):
             
             global _llm
             if '_llm' not in globals():
-                _llm = Llama(model_path=model_path, n_ctx=1024, verbose=False)
+                _llm = Llama(model_path=model_path, n_ctx=2048, verbose=False)
                 
-            output = _llm(full_prompt, max_tokens=200, stop=["<|user|>", "<|end|>"], echo=False)
+            output = _llm(full_prompt, max_tokens=200, stop=["<|user|>", "</s>"], echo=False)
             response_text = output['choices'][0]['text'].strip()
             
             # SECURITY: Sanitize the model output before sending to frontend
