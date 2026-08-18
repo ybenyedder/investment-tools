@@ -247,3 +247,26 @@ def test_chat_endpoint_missing_prompt():
     response = client.post("/api/chat", json=payload)
     # FastAPI pydantic validation should catch this as a 422 Unprocessable Entity
     assert response.status_code == 422
+
+def test_chat_endpoint_intel_stock_info():
+    """Non-regression test to ask LLM for Intel stock information using context."""
+    payload = {
+        "prompt": "Can you give me all the stock information about Intel?",
+        "context": [{
+            "ticker": "INTC", 
+            "name": "Intel Corporation",
+            "current_price": 35.50,
+            "sharpe_ratio": 0.4,
+            "rl_action": "HOLD",
+            "tam_b": 100.5,
+            "peg_ratio": 1.2
+        }]
+    }
+    response = client.post("/api/chat", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    
+    assert "response" in data or "error" in data
+    if "response" in data:
+        # Check that the model responded somewhat reasonably and didn't crash
+        assert len(data["response"]) > 0
