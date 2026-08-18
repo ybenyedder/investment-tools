@@ -1,3 +1,5 @@
+from pymongo import MongoClient
+import datetime
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import yfinance as yf
@@ -267,7 +269,7 @@ def analyze_assets(
         from news_correlation import calculate_news_impact
         news_data = calculate_news_impact(ticker, ticker_info.get("shortName", ticker))
 
-        results.append({
+        company_data = {
             "ticker": ticker,
             "name": ticker_info.get("shortName", ticker),
             "sector": ticker_info.get("sector", "Unknown"),
@@ -304,8 +306,24 @@ def analyze_assets(
             "profit_margin": ticker_info.get("profitMargins"),
             "operating_margin": ticker_info.get("operatingMargins"),
             "free_cash_flow": ticker_info.get("freeCashflow"),
-            "total_debt": ticker_info.get("totalDebt")
-        })
+            "total_debt": ticker_info.get("totalDebt"),
+            "last_updated": datetime.datetime.utcnow().isoformat()
+        }
+        results.append(company_data)
+        
+        try:
+            mongo_url = os.getenv("MONGO_URL", "mongodb://mongo:27017")
+            client = MongoClient(mongo_url)
+            db_name = "investment_tools"
+            if "/" in mongo_url.split("mongodb://")[-1]:
+                db = client.get_default_database()
+            else:
+                db = client.get_database(db_name)
+            
+            db.companies_info.update_one({"ticker": ticker}, {"$set": company_data}, upsert=True)
+        except Exception as e:
+            print(f"Failed to store {ticker} in MongoDB: {e}")
+
     
     # 4. Rank by selected Quantitative Method
     if quant_method == "sortino":
