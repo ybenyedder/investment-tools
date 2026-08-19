@@ -418,8 +418,46 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-
               </div>
+              
+              {/* Financial Trajectories Graph */}
+              {selectedCompanyInfo.revenue_trajectory && Object.keys(selectedCompanyInfo.revenue_trajectory).length > 0 && (
+                <div className="mt-8 bg-slate-50 rounded-xl p-5 border border-slate-200">
+                  <h3 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">Financial Trajectories ($ Billions)</h3>
+                  <div className="w-full h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart 
+                        data={Object.keys(selectedCompanyInfo.revenue_trajectory).sort().map(year => ({
+                          year,
+                          Revenue: (selectedCompanyInfo.revenue_trajectory[year] || 0) / 1e9,
+                          NetIncome: (selectedCompanyInfo.net_income_trajectory?.[year] || 0) / 1e9,
+                          OPEX: (selectedCompanyInfo.opex_trajectory?.[year] || 0) / 1e9,
+                          CAPEX: Math.abs(selectedCompanyInfo.capex_trajectory?.[year] || 0) / 1e9,
+                          NFP: (selectedCompanyInfo.net_financial_position_trajectory?.[year] || 0) / 1e9
+                        }))}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="year" tick={{fontSize: 12, fill: '#64748b'}} />
+                        <YAxis tick={{fontSize: 12, fill: '#64748b'}} tickFormatter={(val) => `$${val}B`} />
+                        <Tooltip formatter={(val) => `$${val.toFixed(2)}B`} contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                        <Legend />
+                        <Line type="monotone" dataKey="Revenue" stroke="#3b82f6" strokeWidth={2} activeDot={{ r: 6 }} />
+                        <Line type="monotone" dataKey="NetIncome" stroke="#10b981" strokeWidth={2} />
+                        <Line type="monotone" dataKey="OPEX" stroke="#f59e0b" strokeWidth={2} />
+                        <Line type="monotone" dataKey="CAPEX" stroke="#ef4444" strokeWidth={2} />
+                        <Line type="monotone" dataKey="NFP" stroke="#8b5cf6" strokeWidth={2} name="Net Fin Position" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4 text-xs text-slate-500 text-center">
+                    <div>Rev Volatility: <span className="font-bold text-slate-700">{(selectedCompanyInfo.revenue_volatility * 100).toFixed(1)}%</span></div>
+                    <div>Net Inc Volatility: <span className="font-bold text-slate-700">{(selectedCompanyInfo.net_income_volatility * 100).toFixed(1)}%</span></div>
+                    <div>OPEX Volatility: <span className="font-bold text-slate-700">{(selectedCompanyInfo.opex_volatility * 100).toFixed(1)}%</span></div>
+                    <div>CAPEX Volatility: <span className="font-bold text-slate-700">{(selectedCompanyInfo.capex_volatility * 100).toFixed(1)}%</span></div>
+                    <div>NFP Volatility: <span className="font-bold text-slate-700">{(selectedCompanyInfo.net_financial_position_volatility * 100).toFixed(1)}%</span></div>
+                  </div>
+                </div>
+              )}
             </div>
             
             <div className="p-4 border-t border-slate-200 bg-slate-50 rounded-b-2xl text-right">

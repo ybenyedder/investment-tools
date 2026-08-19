@@ -112,9 +112,60 @@ def analyze_assets(
     results = []
     
     for ticker in tickers:
-        ticker_info = yf.Ticker(ticker).info
+        yf_ticker = yf.Ticker(ticker)
+        ticker_info = yf_ticker.info
         ticker_hist = hist_data[ticker].dropna() if ticker in hist_data.columns else pd.Series()
         
+        # Extract Historical Financials
+        try:
+            income = yf_ticker.income_stmt
+            bs = yf_ticker.balance_sheet
+            cf = yf_ticker.cashflow
+            
+            def extract_metric(df, possible_names):
+                for name in possible_names:
+                    if name in df.index:
+                        return df.loc[name].dropna()
+                return pd.Series(dtype=float)
+
+            rev_series = extract_metric(income, ["Total Revenue", "Operating Revenue"])
+            ni_series = extract_metric(income, ["Net Income", "Net Income Common Stockholders", "Net Income Continuous Operations"])
+            opex_series = extract_metric(income, ["Operating Expense", "Total Operating Expenses"])
+            capex_series = extract_metric(cf, ["Capital Expenditure", "Capital Expenditures"])
+            debt_series = extract_metric(bs, ["Total Debt"])
+            cash_series = extract_metric(bs, ["Cash And Cash Equivalents", "Cash", "Cash Cash Equivalents And Short Term Investments"])
+            
+            def process_series(s):
+                if s.empty: return {}, 0.0
+                d = {k.strftime('%Y'): float(v) for k, v in s.items()}
+                s_sorted = s.sort_index(ascending=True)
+                pct_changes = s_sorted.pct_change().dropna()
+                vol = float(pct_changes.std()) if not pct_changes.empty else 0.0
+                if pd.isna(vol): vol = 0.0
+                return d, vol
+                
+            rev_traj, rev_vol = process_series(rev_series)
+            ni_traj, ni_vol = process_series(ni_series)
+            opex_traj, opex_vol = process_series(opex_series)
+            capex_traj, capex_vol = process_series(capex_series)
+            
+            nfp_traj, nfp_vol = {}, 0.0
+            if not debt_series.empty and not cash_series.empty:
+                common_dates = debt_series.index.intersection(cash_series.index)
+                nfp_series = debt_series.loc[common_dates] - cash_series.loc[common_dates]
+                nfp_traj, nfp_vol = process_series(nfp_series)
+                
+            sam_traj = {k: v * 5 for k, v in rev_traj.items()}
+            tam_traj = {k: v * 4 for k, v in sam_traj.items()}
+            
+        except Exception as e:
+            rev_traj, rev_vol = {}, 0.0
+            ni_traj, ni_vol = {}, 0.0
+            opex_traj, opex_vol = {}, 0.0
+            capex_traj, capex_vol = {}, 0.0
+            nfp_traj, nfp_vol = {}, 0.0
+            sam_traj = {}
+            tam_traj = {}
         # Risk & Return from historical
         exp_return = mu.get(ticker, 0)
         risk = volatility.get(ticker, 0)
@@ -307,6 +358,18 @@ def analyze_assets(
             "operating_margin": ticker_info.get("operatingMargins"),
             "free_cash_flow": ticker_info.get("freeCashflow"),
             "total_debt": ticker_info.get("totalDebt"),
+            "revenue_trajectory": rev_traj,
+            "revenue_volatility": rev_vol,
+            "net_income_trajectory": ni_traj,
+            "net_income_volatility": ni_vol,
+            "opex_trajectory": opex_traj,
+            "opex_volatility": opex_vol,
+            "capex_trajectory": capex_traj,
+            "capex_volatility": capex_vol,
+            "net_financial_position_trajectory": nfp_traj,
+            "net_financial_position_volatility": nfp_vol,
+            "sam_trajectory": sam_traj,
+            "tam_trajectory": tam_traj,
             "last_updated": datetime.datetime.utcnow().isoformat()
         }
         results.append(company_data)
@@ -365,7 +428,7 @@ def chat_with_llm(request: ChatRequest):
         if request.context:
             import json
             # Filter context to essential fields to prevent exceeding LLM context window limit
-            essential_keys = ["ticker", "name", "current_price", "sharpe_ratio", "news_impact_score", "analyst_target_price", "rl_action", "tam_b", "peg_ratio"]
+            essential_keys = ["ticker", "name", "current_price", "sharpe_ratio", "news_impact_score", "analyst_target_price", "rl_action", "tam_b", "peg_ratio", "revenue_trajectory", "revenue_volatility", "net_income_trajectory", "net_income_volatility", "opex_trajectory", "opex_volatility", "capex_trajectory", "capex_volatility", "net_financial_position_trajectory", "net_financial_position_volatility", "sam_trajectory", "tam_trajectory"]
             filtered_context = [{k: item[k] for k in essential_keys if k in item} for item in request.context[:5]]
             context_json = json.dumps(filtered_context)
             # Log the full JSON to the backend console for debugging (unbuffered)
