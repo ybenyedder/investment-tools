@@ -14,6 +14,11 @@ export default function Home() {
   const [chatResponse, setChatResponse] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [selectedCompanyInfo, setSelectedCompanyInfo] = useState(null);
+  
+  // Search State
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   // Black-Scholes State
   const [bsParams, setBsParams] = useState({ S: 100, K: 100, T: 1, r: 0.05, sigma: 0.2 });
@@ -41,6 +46,25 @@ export default function Home() {
       console.error(err);
     }
     setBsLoading(false);
+  };
+
+  const handleSearch = async (e) => {
+    const q = e.target.value;
+    setSearchQuery(q);
+    if (q.length > 1) {
+      setIsSearching(true);
+      try {
+        const apiUrl = "";
+        const res = await fetch(`${apiUrl}/api/search_company?q=${q}`);
+        const data = await res.json();
+        setSearchResults(data);
+      } catch (err) {
+        console.error(err);
+      }
+      setIsSearching(false);
+    } else {
+      setSearchResults([]);
+    }
   };
 
   useEffect(() => {
@@ -145,6 +169,36 @@ export default function Home() {
               ))
             ))}
           </select>
+          <div className="relative">
+            <input 
+              type="text" 
+              placeholder="Search global markets (e.g. Apple)..." 
+              value={searchQuery}
+              onChange={handleSearch}
+              className="py-2 px-3 rounded-md border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm w-72"
+            />
+            {isSearching && searchQuery.length > 1 && (
+              <div className="absolute top-full left-0 mt-1 w-full bg-white border border-slate-200 rounded-md shadow-lg z-50 p-2 text-xs text-slate-500">Searching...</div>
+            )}
+            {searchResults.length > 0 && (
+              <div className="absolute top-full left-0 mt-1 w-full bg-white border border-slate-200 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
+                {searchResults.map((res, idx) => (
+                  <div 
+                    key={idx} 
+                    className="p-2 hover:bg-blue-50 cursor-pointer border-b border-slate-100 last:border-b-0"
+                    onClick={() => {
+                      setTickers(prev => prev ? prev + "," + res.ticker : res.ticker);
+                      setSearchQuery("");
+                      setSearchResults([]);
+                    }}
+                  >
+                    <div className="font-bold text-slate-800 text-sm">{res.ticker}</div>
+                    <div className="text-xs text-slate-500 truncate">{res.name}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex gap-4 mt-2 mb-6">
           <input 

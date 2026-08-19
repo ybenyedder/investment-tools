@@ -479,7 +479,7 @@ def chat_with_llm(request: ChatRequest):
         if request.context:
             import json
             # Filter context to essential fields to prevent exceeding LLM context window limit
-            essential_keys = ["ticker", "name", "current_price", "sharpe_ratio", "news_impact_score", "analyst_target_price", "rl_action", "tam_b", "peg_ratio", "revenue_trajectory", "revenue_volatility", "net_income_trajectory", "net_income_volatility", "opex_trajectory", "opex_volatility", "capex_trajectory", "capex_volatility", "net_financial_position_trajectory", "net_financial_position_volatility", "sam_trajectory", "tam_trajectory"]
+            essential_keys = ["ticker", "name", "current_price", "sharpe_ratio", "news_impact_score", "analyst_target_price", "rl_action", "tam_b", "sam_b", "som_b", "peg_ratio", "kl_divergence", "log_likelihood", "skewness", "kurtosis", "var_95", "max_drawdown", "revenue_trajectory", "revenue_volatility", "net_income_trajectory", "net_income_volatility", "opex_trajectory", "opex_volatility", "capex_trajectory", "capex_volatility", "net_financial_position_trajectory", "net_financial_position_volatility", "sam_trajectory", "tam_trajectory"]
             filtered_context = [{k: item[k] for k in essential_keys if k in item} for item in request.context[:5]]
             context_json = json.dumps(filtered_context)
             # Log the full JSON to the backend console for debugging (unbuffered)
@@ -519,6 +519,20 @@ def chat_with_llm(request: ChatRequest):
             return {"error": "llama-cpp-python library is not installed yet."}
     except Exception as e:
         return {"error": f"LLM Error: {str(e)}"}
+
+@app.get("/api/search_company")
+def search_company(q: str):
+    """Search for a quoted company by name or ticker using Yahoo Finance."""
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        res = requests.get(f"https://query2.finance.yahoo.com/v1/finance/search?q={q}", headers=headers, timeout=5)
+        if res.status_code == 200:
+            quotes = res.json().get('quotes', [])
+            return [{"ticker": quote.get('symbol', ''), "name": quote.get('shortname', quote.get('longname', ''))} 
+                    for quote in quotes if 'symbol' in quote and quote.get('quoteType') in ['EQUITY', 'ETF']]
+    except Exception as e:
+        print(f"Search error: {e}")
+    return []
 
 class BSRequest(BaseModel):
     S: float
