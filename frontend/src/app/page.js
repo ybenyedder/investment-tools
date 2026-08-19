@@ -428,6 +428,10 @@ export default function Home() {
                       <div className="font-semibold text-slate-900 text-right">{(selectedCompanyInfo.historical_expected_return * 100).toFixed(2)}%</div>
                       <div className="text-slate-500">Volatility (Risk)</div>
                       <div className="font-semibold text-slate-900 text-right">{(selectedCompanyInfo.volatility_risk * 100).toFixed(2)}%</div>
+                      <div className="text-slate-500" title="Kullback-Leibler Divergence (vs Normal Dist)">KL Divergence (vs Normal)</div>
+                      <div className="font-semibold text-slate-900 text-right">{selectedCompanyInfo.kl_divergence != null ? selectedCompanyInfo.kl_divergence.toFixed(4) : 'N/A'}</div>
+                      <div className="text-slate-500">Log-Likelihood</div>
+                      <div className="font-semibold text-slate-900 text-right">{selectedCompanyInfo.log_likelihood != null ? selectedCompanyInfo.log_likelihood.toFixed(2) : 'N/A'}</div>
                       <div className="text-slate-500">Sharpe Ratio</div>
                       <div className="font-semibold text-slate-900 text-right">{selectedCompanyInfo.sharpe_ratio?.toFixed(2)}</div>
                       <div className="text-slate-500">Sortino Ratio</div>

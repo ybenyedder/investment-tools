@@ -194,6 +194,36 @@ def analyze_assets(
         treynor_ratio = (exp_return - risk_free_rate) / beta if beta and beta != 0 else 0
         
         returns_series = ticker_hist.pct_change().dropna()
+        
+        # Calculate KL Divergence & Log-Likelihood
+        kl_divergence = None
+        log_likelihood = None
+        if len(returns_series) > 10:
+            from scipy.stats import norm, entropy
+            ret_mu = returns_series.mean()
+            ret_std = returns_series.std()
+            if ret_std > 0:
+                # 1. Log-Likelihood
+                log_likelihood = float(np.sum(norm.logpdf(returns_series, loc=ret_mu, scale=ret_std)))
+                
+                # 2. KL Divergence (Empirical vs Normal)
+                counts, bin_edges = np.histogram(returns_series, bins=50, density=True)
+                bin_widths = np.diff(bin_edges)
+                p_empirical = counts * bin_widths
+                
+                q_theoretical = np.array([
+                    norm.cdf(bin_edges[i+1], loc=ret_mu, scale=ret_std) - norm.cdf(bin_edges[i], loc=ret_mu, scale=ret_std)
+                    for i in range(len(counts))
+                ])
+                
+                epsilon = 1e-10
+                p_empirical = np.where(p_empirical == 0, epsilon, p_empirical)
+                q_theoretical = np.where(q_theoretical == 0, epsilon, q_theoretical)
+                
+                p_empirical /= np.sum(p_empirical)
+                q_theoretical /= np.sum(q_theoretical)
+                
+                kl_divergence = float(entropy(p_empirical, q_theoretical))
         downside_returns = returns_series[returns_series < 0]
         downside_std = downside_returns.std() * np.sqrt(252) if not downside_returns.empty else 0
         sortino_ratio = (exp_return - risk_free_rate) / downside_std if downside_std > 0 else 0
@@ -327,6 +357,8 @@ def analyze_assets(
             "country": ticker_info.get("country", "Unknown"),
             "current_price": current_price,
             "historical_expected_return": exp_return,
+            "kl_divergence": kl_divergence,
+            "log_likelihood": log_likelihood,
             "volatility_risk": risk,
             "news_impact_score": news_data["impact_score"],
             "news_count": news_data["news_count"],
