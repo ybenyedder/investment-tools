@@ -195,13 +195,28 @@ def analyze_assets(
         
         returns_series = ticker_hist.pct_change().dropna()
         
-        # Calculate KL Divergence & Log-Likelihood
+        # Calculate KL Divergence & Log-Likelihood & Additional Metrics
         kl_divergence = None
         log_likelihood = None
+        skewness = None
+        kurt = None
+        var_95 = None
+        max_drawdown = None
+        
         if len(returns_series) > 10:
-            from scipy.stats import norm, entropy
+            from scipy.stats import norm, entropy, skew, kurtosis
             ret_mu = returns_series.mean()
             ret_std = returns_series.std()
+            
+            skewness = float(skew(returns_series))
+            kurt = float(kurtosis(returns_series))
+            var_95 = float(np.percentile(returns_series, 5))
+            
+            cumulative = (1 + returns_series).cumprod()
+            running_max = cumulative.cummax()
+            drawdown = (cumulative - running_max) / running_max
+            max_drawdown = float(drawdown.min())
+            
             if ret_std > 0:
                 # 1. Log-Likelihood
                 log_likelihood = float(np.sum(norm.logpdf(returns_series, loc=ret_mu, scale=ret_std)))
@@ -359,6 +374,10 @@ def analyze_assets(
             "historical_expected_return": exp_return,
             "kl_divergence": kl_divergence,
             "log_likelihood": log_likelihood,
+            "skewness": skewness,
+            "kurtosis": kurt,
+            "var_95": var_95,
+            "max_drawdown": max_drawdown,
             "volatility_risk": risk,
             "news_impact_score": news_data["impact_score"],
             "news_count": news_data["news_count"],

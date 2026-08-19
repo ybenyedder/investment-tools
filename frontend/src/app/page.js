@@ -432,6 +432,12 @@ export default function Home() {
                       <div className="font-semibold text-slate-900 text-right">{selectedCompanyInfo.kl_divergence != null ? selectedCompanyInfo.kl_divergence.toFixed(4) : 'N/A'}</div>
                       <div className="text-slate-500">Log-Likelihood</div>
                       <div className="font-semibold text-slate-900 text-right">{selectedCompanyInfo.log_likelihood != null ? selectedCompanyInfo.log_likelihood.toFixed(2) : 'N/A'}</div>
+                      <div className="text-slate-500">Skewness / Kurtosis</div>
+                      <div className="font-semibold text-slate-900 text-right">{selectedCompanyInfo.skewness != null ? selectedCompanyInfo.skewness.toFixed(2) : 'N/A'} / {selectedCompanyInfo.kurtosis != null ? selectedCompanyInfo.kurtosis.toFixed(2) : 'N/A'}</div>
+                      <div className="text-slate-500">Value at Risk (95%)</div>
+                      <div className="font-semibold text-slate-900 text-right text-red-600">{selectedCompanyInfo.var_95 != null ? (selectedCompanyInfo.var_95 * 100).toFixed(2) + '%' : 'N/A'}</div>
+                      <div className="text-slate-500">Max Drawdown</div>
+                      <div className="font-semibold text-slate-900 text-right text-red-600">{selectedCompanyInfo.max_drawdown != null ? (selectedCompanyInfo.max_drawdown * 100).toFixed(2) + '%' : 'N/A'}</div>
                       <div className="text-slate-500">Sharpe Ratio</div>
                       <div className="font-semibold text-slate-900 text-right">{selectedCompanyInfo.sharpe_ratio?.toFixed(2)}</div>
                       <div className="text-slate-500">Sortino Ratio</div>
