@@ -91,7 +91,7 @@ services:
       - mongo
 
   llamacpp:
-    image: ghcr.io/ggerganov/llama.cpp:server
+    image: ghcr.io/ggml-org/llama.cpp:server
     container_name: llamacpp
     restart: always
     ports:
