@@ -1,6 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from main import app
+from unittest.mock import patch
 
 client = TestClient(app)
 
@@ -16,7 +17,9 @@ def test_get_universe():
     assert "S&P 500" in data["US Markets (NASDAQ & NYSE)"]
     assert len(data["US Markets (NASDAQ & NYSE)"]["S&P 500"]) > 400
 
-def test_analyze_assets_success():
+@patch("news_correlation.fetch_recent_news")
+def test_analyze_assets_success(mock_fetch_news):
+    mock_fetch_news.return_value = []
     """Test the core analyze endpoint with valid standard tickers."""
     response = client.post("/api/analyze?tickers=AAPL&tickers=MSFT")
     assert response.status_code == 200
@@ -38,7 +41,9 @@ def test_analyze_assets_success():
     assert "sharpe_ratio" in aapl_data
     assert aapl_data["sharpe_ratio"] >= -10  # basic bounds check
     
-def test_analyze_assets_nan_regression():
+@patch("news_correlation.fetch_recent_news")
+def test_analyze_assets_nan_regression(mock_fetch_news):
+    mock_fetch_news.return_value = []
     """
     Non-regression test to ensure assets with missing historical data (e.g., FLNC, PLTR)
     do not cause a 500 JSON serialization error due to NaN values.
@@ -92,7 +97,9 @@ def test_analyze_assets_quantitative_method():
     if len(data_treynor) > 1:
         assert data_treynor[0]["treynor_ratio"] >= data_treynor[1]["treynor_ratio"]
 
-def test_analyze_assets_ai_and_advanced_metrics():
+@patch("news_correlation.fetch_recent_news")
+def test_analyze_assets_ai_and_advanced_metrics(mock_fetch_news):
+    mock_fetch_news.return_value = []
     """Test that RL Backtest, TAM/SAM/SOM, Correlation, and SARIMA are returned."""
     response = client.post("/api/analyze?tickers=MSFT")
     assert response.status_code == 200
@@ -115,7 +122,9 @@ def test_analyze_assets_ai_and_advanced_metrics():
     assert msft_data["rl_backtest_accuracy"] >= 0
     assert msft_data["tam_b"] >= 0
 
-def test_analyze_assets_bachelier():
+@patch("news_correlation.fetch_recent_news")
+def test_analyze_assets_bachelier(mock_fetch_news):
+    mock_fetch_news.return_value = []
     """Test that the Bachelier model (Arithmetic Brownian Motion) estimations are returned."""
     response = client.post("/api/analyze?tickers=AAPL")
     assert response.status_code == 200
@@ -146,19 +155,20 @@ def test_chat_endpoint():
     if "response" in data:
         assert "<script>" not in data["response"]
 
-def test_analyze_assets_fundamentals():
-    """Test that fundamental KPIs like PEG, ROE, DTI, Margins, and FCF are present in the response."""
+@patch("news_correlation.fetch_recent_news")
+def test_analyze_assets_fundamentals(mock_fetch_news):
+    mock_fetch_news.return_value = []
+    """Test that fundamental analysis metrics are extracted correctly."""
     response = client.post("/api/analyze?tickers=AAPL")
     assert response.status_code == 200
     data = response.json()
-    assert len(data["analysis"]) > 0
-    
     aapl_data = data["analysis"][0]
-    # Check that keys exist (value can be None depending on yfinance data availability, but keys must exist)
+    
     expected_keys = [
-        "peg_ratio", "return_on_equity", "debt_to_equity", 
+        "peg_ratio", "return_on_equity", "debt_to_equity",
         "profit_margin", "operating_margin", "free_cash_flow", "total_debt"
     ]
+    
     for key in expected_keys:
         assert key in aapl_data
 
@@ -270,8 +280,6 @@ def test_chat_endpoint_intel_stock_info():
     if "response" in data:
         # Check that the model responded somewhat reasonably and didn't crash
         assert len(data["response"]) > 0
-
-from unittest.mock import patch
 
 @patch("news_correlation.fetch_recent_news")
 def test_analyze_assets_news_impact(mock_fetch_news):
