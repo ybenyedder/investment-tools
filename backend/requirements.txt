@@ -13,3 +13,4 @@ bleach
 huggingface-hub
 pymongo
 chromadb
+llama-cpp-python
