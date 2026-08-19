@@ -14,6 +14,8 @@ export default function Home() {
   const [chatResponse, setChatResponse] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [selectedCompanyInfo, setSelectedCompanyInfo] = useState(null);
+  const [llmProvider, setLlmProvider] = useState("local");
+  const [llmApiKey, setLlmApiKey] = useState("");
   
   // Search State
   const [searchQuery, setSearchQuery] = useState("");
@@ -103,7 +105,9 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           prompt: chatPrompt, 
-          context: data ? data.top_10 : []
+          context: data ? data.top_10 : [],
+          provider: llmProvider,
+          api_key: llmApiKey
         })
       });
       const json = await res.json();
@@ -237,7 +241,28 @@ export default function Home() {
       
       {/* Ask Local LLM Section */}
       <div className="mb-8 p-6 bg-indigo-50 rounded-xl shadow-sm border border-indigo-200">
-        <h3 className="text-indigo-900 mt-0 mb-4 text-xl font-semibold">Ask the Local LLM (Investment Assistant)</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-indigo-900 mt-0 mb-0 text-xl font-semibold">Ask the AI Assistant</h3>
+          <div className="flex items-center gap-3">
+            <select 
+              value={llmProvider} 
+              onChange={(e) => setLlmProvider(e.target.value)}
+              className="py-1 px-2 border border-slate-300 rounded text-sm text-slate-700 bg-white"
+            >
+              <option value="local">Local LLM (TinyLlama)</option>
+              <option value="openai">Remote (OpenAI)</option>
+            </select>
+            {llmProvider === "openai" && (
+              <input 
+                type="password" 
+                placeholder="sk-..." 
+                value={llmApiKey}
+                onChange={(e) => setLlmApiKey(e.target.value)}
+                className="py-1 px-2 border border-slate-300 rounded text-sm text-slate-700 w-32"
+              />
+            )}
+          </div>
+        </div>
         <div className="flex gap-4 mb-4">
           <input 
             type="text" 

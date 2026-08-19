@@ -462,13 +462,17 @@ def analyze_assets(
         "plot_data": plot_data
     }
 
+from typing import Optional
+
 class ChatRequest(BaseModel):
     prompt: str
     context: list = []
+    provider: str = "local"
+    api_key: Optional[str] = None
 
 @app.post("/api/chat")
 def chat_with_llm(request: ChatRequest):
-    """Local LLM Chat endpoint using llama-cpp-python for financial queries."""
+    """LLM Chat endpoint supporting Local Llama and Remote OpenAI for financial queries."""
     try:
         import bleach
         # SECURITY: Sanitize the user input before passing it to the backend model
@@ -489,34 +493,55 @@ def chat_with_llm(request: ChatRequest):
         
         # System prompt with platform awareness
         system_prompt = (
-            "You are a Local LLM built into an advanced Investment Tools platform. "
-            "You are deeply integrated with the platform's API which fetches live financial data, fundamental KPIs, and global stock lists (like the S&P 500) directly from the internet. "
-            "You can provide information regarding a specific company or domain, summarize complex financial data, and extract valuable internet-fetched insights from the provided context."
+            "You are an AI assistant built into an advanced Investment Tools platform. "
+            "You are deeply integrated with the platform's API which fetches live financial data, fundamental KPIs, and global stock lists directly from the internet. "
+            "You can provide information regarding a specific company or domain, summarize complex financial data, and extract valuable insights from the provided context."
         )
         
-        # TinyLlama Chat Format
-        full_prompt = f"<|system|>\n{system_prompt}</s>\n<|user|>\n{context_str}\nQuestion: {clean_prompt}</s>\n<|assistant|>\n"
-        
-        try:
-            from llama_cpp import Llama
-            import os
-            model_path = os.path.join(os.path.dirname(__file__), "models", "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf")
-            if not os.path.exists(model_path):
-                return {"error": "Local LLM model is currently downloading or not found. Please try again in a few minutes."}
-            
-            global _llm
-            if '_llm' not in globals():
-                _llm = Llama(model_path=model_path, n_ctx=2048, verbose=False)
+        if request.provider == "openai":
+            try:
+                import openai
+                if not request.api_key:
+                    return {"error": "OpenAI API Key is required for remote usage."}
                 
-            output = _llm(full_prompt, max_tokens=200, stop=["<|user|>", "</s>"], echo=False)
-            response_text = output['choices'][0]['text'].strip()
+                client = openai.OpenAI(api_key=request.api_key)
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": f"{context_str}\nQuestion: {clean_prompt}"}
+                    ],
+                    max_tokens=400
+                )
+                response_text = response.choices[0].message.content.strip()
+                clean_response = bleach.clean(response_text)
+                return {"response": clean_response}
+            except Exception as e:
+                return {"error": f"OpenAI API Error: {str(e)}"}
+        else:
+            # TinyLlama Chat Format
+            full_prompt = f"<|system|>\n{system_prompt}</s>\n<|user|>\n{context_str}\nQuestion: {clean_prompt}</s>\n<|assistant|>\n"
             
-            # SECURITY: Sanitize the model output before sending to frontend
-            clean_response = bleach.clean(response_text)
-            return {"response": clean_response}
-            
-        except ImportError:
-            return {"error": "llama-cpp-python library is not installed yet."}
+            try:
+                from llama_cpp import Llama
+                import os
+                model_path = os.path.join(os.path.dirname(__file__), "models", "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf")
+                if not os.path.exists(model_path):
+                    return {"error": "Local LLM model is currently downloading or not found. Please try again in a few minutes."}
+                
+                global _llm
+                if '_llm' not in globals():
+                    _llm = Llama(model_path=model_path, n_ctx=2048, verbose=False)
+                    
+                output = _llm(full_prompt, max_tokens=200, stop=["<|user|>", "</s>"], echo=False)
+                response_text = output['choices'][0]['text'].strip()
+                
+                # SECURITY: Sanitize the model output before sending to frontend
+                clean_response = bleach.clean(response_text)
+                return {"response": clean_response}
+                
+            except ImportError:
+                return {"error": "llama-cpp-python library is not installed yet."}
     except Exception as e:
         return {"error": f"LLM Error: {str(e)}"}
 
