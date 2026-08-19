@@ -15,6 +15,34 @@ export default function Home() {
   const [chatLoading, setChatLoading] = useState(false);
   const [selectedCompanyInfo, setSelectedCompanyInfo] = useState(null);
 
+  // Black-Scholes State
+  const [bsParams, setBsParams] = useState({ S: 100, K: 100, T: 1, r: 0.05, sigma: 0.2 });
+  const [bsResult, setBsResult] = useState(null);
+  const [bsLoading, setBsLoading] = useState(false);
+
+  const calculateBS = async () => {
+    setBsLoading(true);
+    try {
+      const apiUrl = "";
+      const res = await fetch(`${apiUrl}/api/black-scholes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          S: parseFloat(bsParams.S),
+          K: parseFloat(bsParams.K),
+          T: parseFloat(bsParams.T),
+          r: parseFloat(bsParams.r),
+          sigma: parseFloat(bsParams.sigma)
+        })
+      });
+      const json = await res.json();
+      setBsResult(json);
+    } catch (err) {
+      console.error(err);
+    }
+    setBsLoading(false);
+  };
+
   useEffect(() => {
     const apiUrl = "";
     fetch(`${apiUrl}/api/universe`)
@@ -177,6 +205,53 @@ export default function Home() {
           <div className="p-5 bg-white rounded-lg shadow-inner border border-indigo-100 text-slate-800 leading-relaxed">
             <strong className="text-indigo-700 uppercase tracking-wide text-xs">LLM Response:</strong>
             <p className="mt-2 whitespace-pre-wrap">{chatResponse}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Black-Scholes Calculator */}
+      <div className="mb-8 p-6 bg-teal-50 rounded-xl shadow-sm border border-teal-200">
+        <h3 className="text-teal-900 mt-0 mb-4 text-xl font-semibold">Options Pricing (Black-Scholes)</h3>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+          <div>
+            <label className="block text-xs font-bold text-teal-800 uppercase">Stock Price ($)</label>
+            <input type="number" step="0.01" value={bsParams.S} onChange={e => setBsParams({...bsParams, S: e.target.value})} className="w-full p-2 mt-1 rounded border border-teal-200" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-teal-800 uppercase">Strike Price ($)</label>
+            <input type="number" step="0.01" value={bsParams.K} onChange={e => setBsParams({...bsParams, K: e.target.value})} className="w-full p-2 mt-1 rounded border border-teal-200" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-teal-800 uppercase">Time (Years)</label>
+            <input type="number" step="0.1" value={bsParams.T} onChange={e => setBsParams({...bsParams, T: e.target.value})} className="w-full p-2 mt-1 rounded border border-teal-200" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-teal-800 uppercase">Risk-Free Rate</label>
+            <input type="number" step="0.01" value={bsParams.r} onChange={e => setBsParams({...bsParams, r: e.target.value})} className="w-full p-2 mt-1 rounded border border-teal-200" />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-teal-800 uppercase">Volatility (σ)</label>
+            <input type="number" step="0.01" value={bsParams.sigma} onChange={e => setBsParams({...bsParams, sigma: e.target.value})} className="w-full p-2 mt-1 rounded border border-teal-200" />
+          </div>
+        </div>
+        <button 
+          onClick={calculateBS} 
+          disabled={bsLoading}
+          className="px-6 py-2 bg-teal-600 hover:bg-teal-700 transition-colors text-white font-medium rounded-md cursor-pointer disabled:bg-teal-300 shadow-sm"
+        >
+          {bsLoading ? 'Calculating...' : 'Calculate Options Price'}
+        </button>
+
+        {bsResult && (
+          <div className="mt-4 p-4 bg-white rounded-lg shadow-inner border border-teal-100 flex gap-8">
+            <div>
+              <div className="text-xs text-teal-600 uppercase font-bold tracking-wide">Call Option Value</div>
+              <div className="text-2xl font-bold text-teal-900">${bsResult.call_price?.toFixed(2)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-teal-600 uppercase font-bold tracking-wide">Put Option Value</div>
+              <div className="text-2xl font-bold text-teal-900">${bsResult.put_price?.toFixed(2)}</div>
+            </div>
           </div>
         )}
       </div>

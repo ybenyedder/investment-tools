@@ -62,7 +62,9 @@ def test_analyze_assets_invalid_ticker():
     # Depending on yfinance behavior, it may return empty dataframe
     assert "error" in data or len(data.get("analysis", [])) == 0
 
-def test_analyze_assets_black_scholes():
+@patch("news_correlation.fetch_recent_news")
+def test_analyze_assets_black_scholes(mock_fetch_news):
+    mock_fetch_news.return_value = []
     """Test that the Black-Scholes Geometric Brownian Motion estimations are returned."""
     response = client.post("/api/analyze?tickers=AAPL")
     assert response.status_code == 200
@@ -86,7 +88,9 @@ def test_analyze_assets_black_scholes():
         assert bs_max is not None
         assert bs_min < bs_max
 
-def test_analyze_assets_quantitative_method():
+@patch("news_correlation.fetch_recent_news")
+def test_analyze_assets_quantitative_method(mock_fetch_news):
+    mock_fetch_news.return_value = []
     """Test that changing the quant method changes the sorting of the top 10 results."""
     # Test Treynor
     res_treynor = client.post("/api/analyze?tickers=AAPL&tickers=MSFT&tickers=TSLA&quant_method=treynor")
@@ -185,7 +189,9 @@ def test_chat_endpoint_empty_prompt():
     if response.status_code == 200:
         assert "error" in data or "response" in data
 
-def test_analyze_assets_empty_tickers():
+@patch("news_correlation.fetch_recent_news")
+def test_analyze_assets_empty_tickers(mock_fetch_news):
+    mock_fetch_news.return_value = []
     """Test how the analyze endpoint handles requests with no tickers passed."""
     response = client.post("/api/analyze")
     # It should fall back to the default Query parameter ["AAPL", "MSFT"]
@@ -196,7 +202,9 @@ def test_analyze_assets_empty_tickers():
     assert "AAPL" in tickers
     assert "MSFT" in tickers
 
-def test_analyze_assets_long_list():
+@patch("news_correlation.fetch_recent_news")
+def test_analyze_assets_long_list(mock_fetch_news):
+    mock_fetch_news.return_value = []
     """Test performance and stability when analyzing a large number of assets simultaneously."""
     tickers = ["AAPL", "MSFT", "GOOGL", "TSLA", "NVDA", "SPY", "GLD"]
     query = "&".join([f"tickers={t}" for t in tickers])
@@ -232,7 +240,9 @@ def test_universe_structure_deep():
     assert "Japan (Nikkei 225)" in data["Asia (Nikkei, Chinese, Hang Seng)"]
     assert "7203.T" in data["Asia (Nikkei, Chinese, Hang Seng)"]["Japan (Nikkei 225)"]
 
-def test_analyze_assets_invalid_quant_method():
+@patch("news_correlation.fetch_recent_news")
+def test_analyze_assets_invalid_quant_method(mock_fetch_news):
+    mock_fetch_news.return_value = []
     """Test the analyze endpoint with a completely invalid quantitative method."""
     response = client.post("/api/analyze?tickers=AAPL&quant_method=made_up_ratio")
     assert response.status_code == 200
@@ -240,7 +250,9 @@ def test_analyze_assets_invalid_quant_method():
     # Should fall back to sharpe_ratio sorting
     assert len(data["analysis"]) == 1
 
-def test_analyze_assets_case_insensitivity():
+@patch("news_correlation.fetch_recent_news")
+def test_analyze_assets_case_insensitivity(mock_fetch_news):
+    mock_fetch_news.return_value = []
     """Test that passing lowercase tickers works securely with yfinance."""
     response = client.post("/api/analyze?tickers=aapl&tickers=msft")
     assert response.status_code == 200
@@ -325,3 +337,23 @@ def test_analyze_assets_financial_trajectories(mock_fetch_news):
     for key in expected_vol_keys:
         assert key in aapl_data
         assert isinstance(aapl_data[key], float)
+
+def test_compute_black_scholes():
+    """Test the Black-Scholes computation endpoint."""
+    payload = {
+        "S": 100.0,
+        "K": 100.0,
+        "T": 1.0,
+        "r": 0.05,
+        "sigma": 0.2
+    }
+    response = client.post("/api/black-scholes", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert "call_price" in data
+    assert "put_price" in data
+    
+    # 100 strike, 100 spot, 1yr, 5% r, 20% vol -> Call ~10.45
+    assert data["call_price"] > 0
+    assert data["put_price"] > 0
+    assert abs(data["call_price"] - 10.45) < 0.1

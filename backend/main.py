@@ -466,6 +466,34 @@ def chat_with_llm(request: ChatRequest):
             
         except ImportError:
             return {"error": "llama-cpp-python library is not installed yet."}
-            
     except Exception as e:
         return {"error": f"LLM Error: {str(e)}"}
+
+class BSRequest(BaseModel):
+    S: float
+    K: float
+    T: float
+    r: float
+    sigma: float
+
+@app.post("/api/black-scholes")
+def compute_black_scholes(req: BSRequest):
+    from scipy.stats import norm
+    import math
+    if req.T <= 0:
+        return {
+            "call_price": max(0.0, req.S - req.K),
+            "put_price": max(0.0, req.K - req.S)
+        }
+    
+    d1 = (math.log(req.S / req.K) + (req.r + 0.5 * req.sigma**2) * req.T) / (req.sigma * math.sqrt(req.T))
+    d2 = d1 - req.sigma * math.sqrt(req.T)
+    
+    call_price = req.S * norm.cdf(d1) - req.K * math.exp(-req.r * req.T) * norm.cdf(d2)
+    put_price = req.K * math.exp(-req.r * req.T) * norm.cdf(-d2) - req.S * norm.cdf(-d1)
+    
+    return {
+        "call_price": call_price,
+        "put_price": put_price
+    }
+
