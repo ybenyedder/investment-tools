@@ -287,3 +287,33 @@ def test_analyze_assets_news_impact(mock_fetch_news):
     assert "news_count" in aapl_data
     assert -1.0 <= aapl_data["news_impact_score"] <= 1.0
     assert aapl_data["news_count"] >= 0
+
+@patch("news_correlation.fetch_recent_news")
+def test_analyze_assets_financial_trajectories(mock_fetch_news):
+    mock_fetch_news.return_value = []
+    """Non-regression test to ensure financial trajectories and volatilities are correctly returned."""
+    response = client.post("/api/analyze?tickers=AAPL")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["analysis"]) > 0
+    
+    aapl_data = data["analysis"][0]
+    
+    # Check that new metric keys exist
+    expected_traj_keys = [
+        "revenue_trajectory", "net_income_trajectory", "opex_trajectory",
+        "capex_trajectory", "net_financial_position_trajectory",
+        "sam_trajectory", "tam_trajectory"
+    ]
+    expected_vol_keys = [
+        "revenue_volatility", "net_income_volatility", "opex_volatility",
+        "capex_volatility", "net_financial_position_volatility"
+    ]
+    
+    for key in expected_traj_keys:
+        assert key in aapl_data
+        assert isinstance(aapl_data[key], dict)
+        
+    for key in expected_vol_keys:
+        assert key in aapl_data
+        assert isinstance(aapl_data[key], float)

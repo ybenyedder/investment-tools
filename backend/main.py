@@ -376,7 +376,7 @@ def analyze_assets(
         
         try:
             mongo_url = os.getenv("MONGO_URL", "mongodb://mongo:27017")
-            client = MongoClient(mongo_url)
+            client = MongoClient(mongo_url, serverSelectionTimeoutMS=2000)
             db_name = "investment_tools"
             if "/" in mongo_url.split("mongodb://")[-1]:
                 db = client.get_default_database()
