@@ -151,7 +151,7 @@ def _get_mongo_db():
 @app.post("/api/analyze")
 def analyze_assets(
     tickers: List[str] = Query(default=["AAPL", "MSFT"]),
-    quant_method: str = Query(default="sharpe", pattern="^(sharpe|sortino|treynor)$", description="Quantitative method to rank by: sharpe, sortino, treynor")
+    quant_method: str = Query(default="sharpe", description="Quantitative method to rank by: sharpe, sortino, treynor")
 ):
     """Analyze a list of tickers, calculating expected returns, risk, and analyst targets."""
     # 1. Fetch 10-year historical data
