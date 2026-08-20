@@ -161,3 +161,12 @@ def test_calibrate_endpoint_anomaly():
     # Because of the massive spike, the sliding window drift will be huge compared to the KF state
     assert data["anomaly_detected"] is True
     assert "ANOMALY DETECTED" in data["anomaly_msg"]
+
+def test_version_endpoint():
+    response = client.get("/api/version")
+    assert response.status_code == 200
+    data = response.json()
+    assert "version" in data
+    assert data["version"] == "1.0.0"
+    assert "service" in data
+    assert data["service"] == "sb-estimator"

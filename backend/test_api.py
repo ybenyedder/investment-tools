@@ -17,6 +17,13 @@ def test_get_universe():
     assert "S&P 500" in data["US Markets (NASDAQ & NYSE)"]
     assert len(data["US Markets (NASDAQ & NYSE)"]["S&P 500"]) > 400
 
+def test_version_endpoint():
+    response = client.get("/api/version")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["version"] == "1.0.0"
+    assert data["service"] == "investment-backend"
+
 @patch("news_correlation.fetch_recent_news")
 def test_analyze_assets_success(mock_fetch_news):
     mock_fetch_news.return_value = []
