@@ -1,6 +1,6 @@
 from pymongo import MongoClient
 import datetime
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import Depends, FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import yfinance as yf
 import pandas as pd
@@ -16,6 +16,12 @@ warnings.filterwarnings('ignore')
 import os
 import requests
 from io import StringIO
+
+import portfolio
+from portfolio import (
+    RegisterRequest, LoginRequest, TradeRequest, ProjectionRequest,
+    get_current_user,
+)
 
 app = FastAPI(title="Investment Analysis API")
 
@@ -76,6 +82,50 @@ except Exception as e:
 def get_universe():
     return ASSET_UNIVERSE
 
+@app.get("/api/health")
+def health():
+    """Liveness probe for monitoring / reverse proxies."""
+    return {"status": "ok", "time": datetime.datetime.now(datetime.timezone.utc).isoformat()}
+
+# ---------------------------------------------------------------------------
+# Auth & virtual portfolio (paper trading)
+# ---------------------------------------------------------------------------
+@app.post("/api/auth/register")
+def auth_register(req: RegisterRequest):
+    return portfolio.register_user(req)
+
+@app.post("/api/auth/login")
+def auth_login(req: LoginRequest):
+    return portfolio.login_user(req)
+
+@app.get("/api/auth/me")
+def auth_me(user=Depends(get_current_user)):
+    return portfolio.me(user)
+
+@app.get("/api/portfolio")
+def get_portfolio(user=Depends(get_current_user)):
+    return portfolio.build_portfolio_view(user)
+
+@app.post("/api/portfolio/trade")
+def trade(req: TradeRequest, user=Depends(get_current_user)):
+    return portfolio.execute_trade(req, user)
+
+@app.get("/api/portfolio/history")
+def portfolio_history(user=Depends(get_current_user)):
+    return portfolio.trade_history(user)
+
+@app.post("/api/portfolio/reset")
+def portfolio_reset(user=Depends(get_current_user)):
+    return portfolio.reset_portfolio(user)
+
+@app.post("/api/portfolio/projection")
+def portfolio_projection(req: ProjectionRequest, user=Depends(get_current_user)):
+    return portfolio.compute_projection(req, user)
+
+@app.get("/api/portfolio/advice")
+def portfolio_advice(user=Depends(get_current_user)):
+    return portfolio.compute_advice(user)
+
 def get_historical_data(tickers: List[str], period: str = "10y"):
     """Fetch historical closing prices."""
     if not tickers:
@@ -85,6 +135,18 @@ def get_historical_data(tickers: List[str], period: str = "10y"):
         data = pd.DataFrame(data)
         data.columns = tickers
     return data
+
+_mongo_client = None
+
+def _get_mongo_db():
+    """Lazily create and reuse a single MongoClient across requests."""
+    global _mongo_client
+    if _mongo_client is None:
+        mongo_url = os.getenv("MONGO_URL", "mongodb://mongo:27017")
+        _mongo_client = MongoClient(mongo_url, serverSelectionTimeoutMS=2000)
+    if "/" in os.getenv("MONGO_URL", "mongodb://mongo:27017").split("mongodb://")[-1]:
+        return _mongo_client.get_default_database()
+    return _mongo_client.get_database("investment_tools")
 
 @app.post("/api/analyze")
 def analyze_assets(
@@ -112,8 +174,12 @@ def analyze_assets(
     results = []
     
     for ticker in tickers:
-        yf_ticker = yf.Ticker(ticker)
-        ticker_info = yf_ticker.info
+        # A single broken/delisted ticker must not fail the whole batch
+        try:
+            yf_ticker = yf.Ticker(ticker)
+            ticker_info = yf_ticker.info or {}
+        except Exception:
+            ticker_info = {}
         ticker_hist = hist_data[ticker].dropna() if ticker in hist_data.columns else pd.Series()
         
         # Extract Historical Financials
@@ -362,8 +428,11 @@ def analyze_assets(
                 highest_corr_ticker = str(corrs.idxmax())
                 highest_corr_value = float(corrs.max())
         
-        from news_correlation import calculate_news_impact
-        news_data = calculate_news_impact(ticker, ticker_info.get("shortName", ticker))
+        try:
+            from news_correlation import calculate_news_impact
+            news_data = calculate_news_impact(ticker, ticker_info.get("shortName", ticker))
+        except Exception:
+            news_data = {"impact_score": 0.0, "news_count": 0, "news_list": []}
 
         company_data = {
             "ticker": ticker,
@@ -421,19 +490,12 @@ def analyze_assets(
             "net_financial_position_volatility": nfp_vol,
             "sam_trajectory": sam_traj,
             "tam_trajectory": tam_traj,
-            "last_updated": datetime.datetime.utcnow().isoformat()
+            "last_updated": datetime.datetime.now(datetime.timezone.utc).isoformat()
         }
         results.append(company_data)
-        
+
         try:
-            mongo_url = os.getenv("MONGO_URL", "mongodb://mongo:27017")
-            client = MongoClient(mongo_url, serverSelectionTimeoutMS=2000)
-            db_name = "investment_tools"
-            if "/" in mongo_url.split("mongodb://")[-1]:
-                db = client.get_default_database()
-            else:
-                db = client.get_database(db_name)
-            
+            db = _get_mongo_db()
             db.companies_info.update_one({"ticker": ticker}, {"$set": company_data}, upsert=True)
         except Exception as e:
             print(f"Failed to store {ticker} in MongoDB: {e}")
@@ -521,27 +583,50 @@ def chat_with_llm(request: ChatRequest):
         else:
             # TinyLlama Chat Format
             full_prompt = f"<|system|>\n{system_prompt}</s>\n<|user|>\n{context_str}\nQuestion: {clean_prompt}</s>\n<|assistant|>\n"
-            
+
+            # 1) Preferred: dedicated llama.cpp server (llamacpp container, OpenAI-compatible)
+            try:
+                llm_url = os.getenv("LLM_URL", "http://localhost:8080/v1/chat/completions")
+                r = requests.post(
+                    llm_url,
+                    json={
+                        "model": os.getenv("LLM_MODEL", "model"),
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": f"{context_str}\nQuestion: {clean_prompt}"}
+                        ],
+                        "max_tokens": 200,
+                        "temperature": 0.7,
+                    },
+                    timeout=60,
+                )
+                r.raise_for_status()
+                response_text = r.json()["choices"][0]["message"]["content"].strip()
+                clean_response = bleach.clean(response_text)
+                return {"response": clean_response}
+            except Exception:
+                pass  # fall through to embedded model
+
+            # 2) Fallback: embedded llama-cpp-python (dev only — not shipped in Docker)
             try:
                 from llama_cpp import Llama
-                import os
                 model_path = os.path.join(os.path.dirname(__file__), "models", "tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf")
                 if not os.path.exists(model_path):
-                    return {"error": "Local LLM model is currently downloading or not found. Please try again in a few minutes."}
-                
+                    return {"error": "Local LLM server unreachable and no embedded model found. Start the llamacpp service or use the OpenAI provider."}
+
                 global _llm
                 if '_llm' not in globals():
                     _llm = Llama(model_path=model_path, n_ctx=2048, verbose=False)
-                    
+
                 output = _llm(full_prompt, max_tokens=200, stop=["<|user|>", "</s>"], echo=False)
                 response_text = output['choices'][0]['text'].strip()
-                
+
                 # SECURITY: Sanitize the model output before sending to frontend
                 clean_response = bleach.clean(response_text)
                 return {"response": clean_response}
-                
+
             except ImportError:
-                return {"error": "llama-cpp-python library is not installed yet."}
+                return {"error": "Local LLM server unreachable and llama-cpp-python is not installed. Start the llamacpp service or use the OpenAI provider."}
     except Exception as e:
         return {"error": f"LLM Error: {str(e)}"}
 

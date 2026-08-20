@@ -1,4 +1,5 @@
 import requests
+from io import StringIO
 from bs4 import BeautifulSoup
 import pandas as pd
 
@@ -15,5 +16,5 @@ print(f"Found {len(tables)} tables.")
 
 for i, table in enumerate(tables):
     print(f"\nTable {i}:")
-    df = pd.read_html(str(table))[0]
+    df = pd.read_html(StringIO(str(table)))[0]
     print(df.head())

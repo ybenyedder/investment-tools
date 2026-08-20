@@ -1,0 +1,8 @@
+models/
+__pycache__/
+.pytest_cache/
+data/
+*.db
+*.gguf
+test_api.py
+install_llm.sh

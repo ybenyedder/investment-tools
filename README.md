@@ -1,47 +1,126 @@
 # Quantitative Investment Tools Suite
 
-This repository contains a suite of advanced quantitative finance tools designed for stock variation analysis, time-series estimation, and financial data aggregation. 
+Suite d'outils de finance quantitative : analyse d'actions, portefeuille virtuel avec achats/ventes au prix réel, projections Monte Carlo et conseils personnalisés.
 
-## 1. Schrödinger Bridge & Fundamentals Estimator
+## Architecture
 
-A full-stack web application (FastAPI backend + JavaScript frontend) that utilizes Entropic Optimal Transport to simulate realistic stock price variations and estimate future financial metrics.
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        docker-compose.yml                        │
+├───────────────┬─────────────────┬───────────────────────────────┤
+│ web (:8000)   │ backend (:8020) │ frontend (:3000)               │
+│ Estimateur    │ API FastAPI     │ Next.js 16 + Recharts          │
+│ Schrödinger   │ yfinance, MPT,  │ Dashboard + Portefeuille       │
+│ Bridge + UI   │ LLM chat, auth, │ (auth, achat, projection,      │
+│ statique      │ portefeuille    │  conseils)                     │
+└───────┬───────┴────────┬────────┴───────────────┬───────────────┘
+        │                │                       │
+        │         ┌──────┴──────┐         ┌──────┴──────┐
+        │         │ mongo       │         │ llamacpp    │
+        │         │ chromadb    │         │ (TinyLlama) │
+        │         │ embeddings  │         └─────────────┘
+        │         │ whatsapp-bot│
+        │         └─────────────┘
+        │
+  finance_tracker.py (CLI : scraping Business Standard → SQLite + ChromaDB)
+```
 
-### Features
-*   **Stochastic Path Simulation:** Generates multiple synthetic price paths connecting an initial price to a target price distribution using the Schrödinger Bridge framework.
-*   **Technical Indicator Estimation:** Dynamically computes the Relative Strength Index (RSI - 14 period) and Moving Average Convergence Divergence (MACD) based on the simulated average price path.
-*   **Fundamental Estimation:** Calculates mock fundamentals at the target timestamp, estimating the P/E Ratio, Return on Equity (ROE), and EBITDA based on the simulated final price.
-*   **Interactive Dashboard:** A frontend UI that allows you to tweak Entropy ($\epsilon$), Volatility, and Target Prices in real-time and visualize the resulting paths and indicators using `Chart.js`.
-*   **Auto-Calibration via Sliding Window:** Automatically calibrates the volatility, target price, and entropy ($\epsilon$) based on the variance and drift detected in a sliding historical time-series window.
-*   **Kalman Filter Anomaly Detection:** Utilizes a robust 1D Kalman Filter (tracking price and drift states) to smooth the time series. If the sliding window's short-term projection deviates from the Kalman Filter's robust projection by >15%, the system immediately flags a "huge wrong estimation" anomaly.
+## 1. Dashboard d'analyse + Portefeuille virtuel (backend/ + frontend/)
 
-### How the Estimation is Done (Processing)
-1.  **State Space Discretization:** The backend (`app.py`) defines a discretized grid of possible stock prices centered around the initial price.
-2.  **Marginal Distributions:** It defines an initial probability distribution (a sharp peak at the current price) and a target probability distribution (a Gaussian curve centered at the expected target price with variance proportional to user-defined volatility).
-3.  **Entropic Optimal Transport (Sinkhorn):** The backend runs the **Sinkhorn-Knopp algorithm**. It takes the initial distribution, target distribution, a cost matrix (squared distance between price states), and the user-defined Entropy ($\epsilon$) parameter. It computes the Optimal Transport Plan—a transition probability matrix that minimizes transport cost while maximizing entropy (randomness).
-4.  **Brownian Bridge Simulation:** To generate the actual time-series paths, the algorithm samples a final target state using the Sinkhorn transition probabilities. It then connects the initial price to this target state using a randomized Brownian Bridge (adding stochastic noise along the path).
-5.  **Metrics Calculation:** The average of these stochastic paths is calculated. Standard formulas (Exponential Moving Averages) are applied to this path to compute MACD and RSI. Stochastic fundamental variables are generated around the mean final price.
+Application full-stack : **API FastAPI** (`backend/main.py`) + **frontend Next.js** (`frontend/`).
 
-### Where the Backend Gets the Information
-*   **Data Source:** For this specific estimation tool, the backend relies purely on **mathematical generation based on user inputs** (Initial Price, Target Price, Volatility, Entropy). It does not fetch live market prices for the simulation; it is a generative model used to study theoretical price variations and stress-test scenarios.
+### Analyse quantitative
+- **Univers d'actifs global** : US, Europe, Asie, ETF, matières premières + S&P 500 complet (Wikipedia)
+- **Théorie moderne du portefeuille** : rendements attendus, covariance, Sharpe / Sortino / Treynor
+- **Statistiques avancées** : KL divergence, log-vraisemblance, skewness, kurtosis, VaR 95 %, max drawdown
+- **Prévisions** : SARIMA 1 an, Black-Scholes (GBM) et Bachelier (ABM) min/max 95 %, cibles analystes
+- **Agent RL heuristique** : signal BUY/SELL/HOLD backtesté sur 5 fenêtres glissantes
+- **News WhatsApp** : corrélation sémantique via ChromaDB + score d'impact
+- **LLM chat** : TinyLlama local (service llamacpp) ou OpenAI distant
 
----
+### Portefeuille virtuel (paper trading) — NOUVEAU
+- **Inscription / connexion** (`backend/portfolio.py`) : mots de passe scrypt, tokens HMAC signés, zéro dépendance externe, SQLite persistant (volume Docker `./backend-data`)
+- **Cash virtuel de 100 000 $** par compte
+- **Bouton « Acheter »** sur chaque société (tableau Top 10 + fiche détaillée) — exécution au **prix marché réel** (yfinance)
+- **Ventes** partielles/totales depuis le panneau portefeuille, P/L latent et réalisé (méthode du coût moyen)
+- **Historique** complet des transactions
 
-## 2. Corporate Financial Results Tracker & Database
+### Projection & conseils — NOUVEAU
+- **Projection Monte Carlo à 5 ans** (500 scénarios) : rendements et corrélations historiques 3 ans, bande P10–P90, distribution finale (P5→P95), probabilité de perte, CAGR médian, Sharpe, projection par action
+- **Moteur de conseils** (rule-based) : score de santé /100, alertes de concentration (ligne et secteur), gestion des liquidités, risque (volatilité, Sharpe), performances 1 an, suggestions de rééquilibrage
 
-A robust data pipeline and CLI tool (`finance_tracker.py`) that aggregates the latest corporate earnings reports, maintaining a historical time series and a semantic vector search database.
+### Endpoints principaux
+| Méthode | Endpoint | Description |
+|---|---|---|
+| POST | `/api/auth/register` / `/api/auth/login` | Inscription / connexion → token |
+| GET | `/api/auth/me` | Profil courant |
+| GET | `/api/portfolio` | Positions, cash, P/L, poids |
+| POST | `/api/portfolio/trade` | Achat/vente au prix marché |
+| POST | `/api/portfolio/projection` | Projection Monte Carlo |
+| GET | `/api/portfolio/advice` | Conseils + score de santé |
+| GET | `/api/portfolio/history` | Historique des transactions |
+| POST | `/api/analyze` | Analyse quantitative multi-actifs |
+| POST | `/api/chat` | Chat LLM (local/OpenAI) |
+| POST | `/api/black-scholes` | Calculateur d'options |
+| GET | `/api/search_company` | Recherche mondiale de sociétés |
+| GET | `/api/health` | Sonde de vie |
 
-### Features
-*   **Automated Scraping:** Connects to financial news portals to download the latest quarterly results.
-*   **Dual-Database Architecture:** 
-    *   **SQLite (Time-Series):** Stores structured tabular data (Company Code, Name, Sales, Net Profit, EPS, Result Date). It enforces strict constraints to automatically detect if history is new and ignores duplicate entries.
-    *   **ChromaDB (Vector DB):** Converts the financial results into text embeddings. If you query a misspelled company name, it performs a semantic similarity search to find the correct data.
-*   **Time-Series Generation:** Extracts a company's historical earnings and formats them into a continuous time series.
-*   **Automated Plotting:** If `matplotlib` is installed, it automatically generates a `.png` chart visualizing the historical Net Sales and Net Profit trajectories.
+## 2. Estimateur Schrödinger Bridge (app.py + static/) — port 8000
 
-### How the Processing is Done
-1.  **Data Extraction:** The script bypasses unreliable HTML table parsing. Instead, it intercepts the hidden Next.js JSON payload (`__NEXT_DATA__`) embedded directly in the page source, ensuring 100% accurate and clean data extraction.
-2.  **Validation & Upserting:** The script iterates through the extracted JSON. It attempts to insert each record into SQLite. If the `(company_name, result_date)` combination already exists, it is safely ignored (meaning it natively handles checking for "new history").
-3.  **Vectorization:** For new records, the script synthesizes a natural language summary (e.g., *"Company X reported results on Date. Net Sales: Y Cr..."*) and embeds this text into ChromaDB along with queryable metadata.
+Simulateur de trajectèmes stochastiques (Sinkhorn / pont brownien) avec 3 algorithmes (pure SB, Kalman, hybride), calibration automatique par fenêtre glissante et détection d'anomalies par filtre de Kalman. Sert l'UI sur `/`.
 
-### Where the Backend Gets the Information
-*   **Data Source:** The script fetches live, real-world corporate financial results directly from the **Business Standard Latest Results List** (`https://www.business-standard.com/companies/results/latest-results-list`).
+## 3. Tracker de résultats corporate (finance_tracker.py)
+
+Pipeline CLI : scraping Business Standard (payload `__NEXT_DATA__`), stockage SQLite (détection de doublons) + ChromaDB (recherche sémantique), tracés matplotlib.
+
+```bash
+python finance_tracker.py --scrape          # récupérer les derniers résultats
+python finance_tracker.py --company RELIANCE  # historique d'une société
+```
+
+## Déploiement
+
+### Stack complète (Docker Compose)
+```bash
+docker compose up -d --build
+```
+| Service | Port hôte | Rôle |
+|---|---|---|
+| web | 8000 | Estimateur Schrödinger Bridge |
+| frontend | 3000 | Dashboard + portefeuille |
+| backend | 8020 | API d'analyse (le frontend proxifie `/api` en interne) |
+| whatsapp-bot | 8002 | Bot WhatsApp (news) |
+| chromadb | 8001 | Vector DB |
+| mongo | 27017 | Base documentaire |
+| embeddings | 8003 | Service d'embeddings |
+| llamacpp | 8080 | TinyLlama (chat local) |
+
+Le portefeuille persiste dans `./backend-data` (monté sur `/app/data`).
+
+### Déploiement distant (deploy.sh)
+```bash
+# Plus aucun mot de passe dans le fichier : fournissez-le via l'env ou l'invite
+DEPLOY_PASSWORD='…' ./deploy.sh
+# ou en interactif :
+./deploy.sh   # invite de saisie du mot de passe
+# ou par clé SSH :
+DEPLOY_SSH_KEY=~/.ssh/id_ed25519 ./deploy.sh
+```
+⚠️ **Sécurité** : un mot de passe SSH a été committé par le passé dans ce dépôt — **changez-le sur le serveur**.
+
+## Développement & tests
+
+```bash
+# Backend (depuis backend/)
+python -m pytest test_api.py test_portfolio.py -q
+
+# Estimateur (racine)
+python -m pytest test_app.py -q
+
+# Frontend (depuis frontend/)
+npm run build && npx eslint src/
+```
+
+Variables d'environnement utiles : `PORTFOLIO_DB`, `PORTFOLIO_SECRET`, `MONGO_URL`, `CHROMA_URL`, `EMBEDDING_URL`, `LLM_URL`, `ALLOWED_ORIGINS`, `BACKEND_URL` (rewrites Next.js).
+
+> ⚠️ Le portefeuille est un **simulateur** (paper trading) à but pédagogique — aucun ordre réel n'est passé sur un marché.

@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Bar, Scatter } from 'recharts';
+import AuthModal from '@/components/AuthModal';
+import TradeModal from '@/components/TradeModal';
+import PortfolioPanel from '@/components/PortfolioPanel';
 
 export default function Home() {
   const [data, setData] = useState(null);
@@ -16,7 +19,7 @@ export default function Home() {
   const [selectedCompanyInfo, setSelectedCompanyInfo] = useState(null);
   const [llmProvider, setLlmProvider] = useState("local");
   const [llmApiKey, setLlmApiKey] = useState("");
-  
+
   // Search State
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
@@ -26,6 +29,49 @@ export default function Home() {
   const [bsParams, setBsParams] = useState({ S: 100, K: 100, T: 1, r: 0.05, sigma: 0.2 });
   const [bsResult, setBsResult] = useState(null);
   const [bsLoading, setBsLoading] = useState(false);
+
+  // Auth & Portfolio State
+  const [authToken, setAuthToken] = useState(null);
+  const [authUser, setAuthUser] = useState(null);
+  const [cash, setCash] = useState(100000);
+  const [showAuth, setShowAuth] = useState(false);
+  const [showPortfolio, setShowPortfolio] = useState(false);
+  const [tradeTarget, setTradeTarget] = useState(null); // {ticker, name, price, side}
+
+  // Restore session from localStorage (validated against the API)
+  useEffect(() => {
+    const t = typeof window !== 'undefined' ? localStorage.getItem('it_token') : null;
+    const email = typeof window !== 'undefined' ? localStorage.getItem('it_user_email') : null;
+    if (!t || !email) return;
+    fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${t}` } })
+      .then(res => res.ok ? res.json() : Promise.reject())
+      .then(me => { setAuthToken(t); setAuthUser(me); })
+      .catch(() => {
+        localStorage.removeItem('it_token');
+        localStorage.removeItem('it_user_email');
+      });
+  }, []);
+
+  const handleAuthenticated = (token, user) => {
+    localStorage.setItem('it_token', token);
+    localStorage.setItem('it_user_email', user.email);
+    setAuthToken(token);
+    setAuthUser(user);
+  };
+
+  const logout = () => {
+    localStorage.removeItem('it_token');
+    localStorage.removeItem('it_user_email');
+    setAuthToken(null);
+    setAuthUser(null);
+    setShowPortfolio(false);
+    setCash(100000);
+  };
+
+  const openTrade = (target) => {
+    if (!authToken) { setShowAuth(true); return; }
+    setTradeTarget(target);
+  };
 
   const calculateBS = async () => {
     setBsLoading(true);
@@ -136,7 +182,35 @@ export default function Home() {
 
   return (
     <main className="p-8 font-sans bg-white min-h-screen text-slate-900">
-      <h1 className="text-4xl font-bold mb-6">Investment Analysis Dashboard</h1>
+      {/* Header + Auth bar */}
+      <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
+        <h1 className="text-4xl font-bold">Investment Analysis Dashboard</h1>
+        <div className="flex items-center gap-3">
+          {authToken ? (
+            <>
+              <span className="text-sm text-slate-600">
+                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-2 align-middle"></span>
+                {authUser?.name || authUser?.email}
+                <span className="text-slate-400 ml-2">({new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(cash)} de cash)</span>
+              </span>
+              <button
+                onClick={() => setShowPortfolio(true)}
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-md shadow-sm transition-colors cursor-pointer"
+              >
+                💼 Mon Portefeuille
+              </button>
+              <button onClick={logout} className="text-sm text-slate-500 hover:text-slate-800 cursor-pointer">Déconnexion</button>
+            </>
+          ) : (
+            <button
+              onClick={() => setShowAuth(true)}
+              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-md shadow-sm transition-colors cursor-pointer"
+            >
+              🔐 Se connecter / S&apos;enregistrer
+            </button>
+          )}
+        </div>
+      </div>
       
       <div className="mb-8 p-6 bg-slate-50 rounded-xl shadow-sm border border-slate-200">
         <h3 className="text-xl font-semibold mb-4 text-slate-800">Select Tickers and Quantitative Method</h3>
@@ -371,7 +445,18 @@ export default function Home() {
               <tbody className="text-slate-600">
                 {data.top_10.map((item, i) => (
                   <tr key={i} onClick={() => setSelectedCompanyInfo(item)} className="border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer">
-                    <td className="p-3"><strong className="text-slate-900 text-base">{item.ticker}</strong><br/><small className="text-slate-500">{item.name}</small></td>
+                    <td className="p-3">
+                      <strong className="text-slate-900 text-base">{item.ticker}</strong><br/>
+                      <small className="text-slate-500">{item.name}</small>
+                      <div className="mt-1.5">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); openTrade({ ticker: item.ticker, name: item.name, price: item.current_price, side: 'buy' }); }}
+                          className="px-3 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition-colors cursor-pointer"
+                        >
+                          Acheter
+                        </button>
+                      </div>
+                    </td>
                     <td className="p-3 bg-indigo-50/30 border-l border-r border-indigo-50">
                       <div className="flex flex-col items-center">
                         <span className={`px-2 py-1 rounded-md font-bold text-xs ${item.news_impact_score > 0.2 ? 'bg-green-100 text-green-700' : item.news_impact_score < -0.2 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}`}>
@@ -492,7 +577,15 @@ export default function Home() {
                   <span className="font-semibold text-slate-900">Current Price: ${selectedCompanyInfo.current_price?.toFixed(2)}</span>
                 </div>
               </div>
-              <button onClick={() => setSelectedCompanyInfo(null)} className="text-slate-400 hover:text-slate-700 p-2 text-2xl font-bold">&times;</button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => openTrade({ ticker: selectedCompanyInfo.ticker, name: selectedCompanyInfo.name, price: selectedCompanyInfo.current_price, side: 'buy' })}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-sm transition-colors cursor-pointer"
+                >
+                  💰 Acheter cette action
+                </button>
+                <button onClick={() => setSelectedCompanyInfo(null)} className="text-slate-400 hover:text-slate-700 p-2 text-2xl font-bold">&times;</button>
+              </div>
             </div>
             
             <div className="p-6 overflow-y-auto flex-1 bg-white">
@@ -629,6 +722,38 @@ export default function Home() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Auth modal */}
+      {showAuth && (
+        <AuthModal
+          onClose={() => setShowAuth(false)}
+          onAuthenticated={handleAuthenticated}
+        />
+      )}
+
+      {/* Portfolio panel */}
+      {showPortfolio && authToken && (
+        <PortfolioPanel
+          token={authToken}
+          onClose={() => setShowPortfolio(false)}
+          onCashUpdate={setCash}
+          onTrade={(target) => setTradeTarget(target)}
+        />
+      )}
+
+      {/* Buy/Sell trade modal */}
+      {tradeTarget && authToken && (
+        <TradeModal
+          ticker={tradeTarget.ticker}
+          name={tradeTarget.name}
+          currentPrice={tradeTarget.price}
+          side={tradeTarget.side || 'buy'}
+          cash={cash}
+          token={authToken}
+          onClose={() => setTradeTarget(null)}
+          onDone={() => {/* le panneau se réactualise de lui-même */}}
+        />
       )}
 
     </main>

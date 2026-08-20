@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from fastapi.responses import FileResponse
+from pydantic import BaseModel, Field, field_validator
 import numpy as np
 import pandas as pd
 import uvicorn
@@ -10,22 +11,47 @@ import math
 app = FastAPI()
 
 # Mount static directory for frontend
-os.makedirs("static", exist_ok=True)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+os.makedirs(STATIC_DIR, exist_ok=True)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+@app.get("/")
+def index():
+    """Serve the estimator UI at the root (was a 404 before)."""
+    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+
+@app.get("/api/health")
+def health():
+    return {"status": "ok"}
 
 class EstimateRequest(BaseModel):
-    initial_price: float = 100.0
-    target_price: float = 110.0
-    volatility: float = 0.2
-    epsilon: float = 5.0
-    steps: int = 100
-    num_paths: int = 5
+    initial_price: float = Field(default=100.0, gt=0)
+    target_price: float = Field(default=110.0, gt=0)
+    volatility: float = Field(default=0.2, gt=0, le=5.0)
+    epsilon: float = Field(default=5.0, gt=0, le=1000.0)
+    steps: int = Field(default=100, ge=10, le=1000)
+    num_paths: int = Field(default=5, ge=1, le=50)
     algorithm: str = "pure_sb"
 
+    @field_validator("algorithm")
+    @classmethod
+    def check_algorithm(cls, v):
+        allowed = {"pure_sb", "kalman", "hybrid"}
+        if v not in allowed:
+            raise ValueError(f"algorithm must be one of {sorted(allowed)}")
+        return v
+
 class CalibrateRequest(BaseModel):
-    prices: list[float]
-    window: int = 20
-    steps_ahead: int = 100
+    prices: list[float] = Field(min_length=3)
+    window: int = Field(default=20, ge=2, le=500)
+    steps_ahead: int = Field(default=100, ge=1, le=2520)
+
+    @field_validator("prices")
+    @classmethod
+    def check_prices(cls, v):
+        if any(p is None or not math.isfinite(p) or p <= 0 for p in v):
+            raise ValueError("all prices must be positive, finite numbers (log-space requires p > 0)")
+        return v
 
 def sinkhorn_knopp(a, b, C, epsilon, max_iter=1000, tol=1e-9):
     # Stabilized Sinkhorn
@@ -228,7 +254,8 @@ def kalman_filter_price(prices, Q_var, R_var):
     return x, P, filtered_prices
 @app.post("/api/calibrate")
 def calibrate(req: CalibrateRequest):
-    if len(req.prices) < req.window:
+    # Need at least window+1 prices to produce window log-returns
+    if len(req.prices) < req.window + 1:
         return {"error": "Not enough data for the sliding window."}
         
     prices = np.array(req.prices)
@@ -291,4 +318,5 @@ def calibrate(req: CalibrateRequest):
     }
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.getenv("PORT", "8000"))
+    uvicorn.run(app, host="0.0.0.0", port=port)

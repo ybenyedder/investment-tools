@@ -22,3 +22,8 @@ backend/models/
 finance_history.db
 chroma_db/
 .pytest_cache/
+
+# Portfolio (auth + portefeuille virtuel)
+backend-data/
+backend/data/
+*.key

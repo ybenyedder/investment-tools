@@ -1,13 +1,114 @@
-version: '3.8'
 services:
+  # Schrödinger Bridge estimator (root app.py + static UI) — port 8000
   web:
     build: .
+    container_name: sb-estimator
+    restart: always
     ports:
       - "8000:8000"
-    volumes:
-      - .:/app
-      - /app/venv
-      - /app/__pycache__
+
+  # Quantitative Investment Analysis API — internal 8000, host 8020
+  backend:
+    build:
+      context: ./backend
+    container_name: investment-backend
+    restart: always
+    ports:
+      - "8020:8000"
     environment:
-      - PYTHONUNBUFFERED=1
-    command: uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+      - PORT=8000
+      - ALLOWED_ORIGINS=http://localhost:3000,https://stock.webtvmedia.net,http://100.107.129.74:3000
+      - MONGO_URL=mongodb://mongo:27017/whatsapp-bot
+      - CHROMA_URL=http://chromadb:8000
+      - EMBEDDING_URL=http://embeddings:8001/embed
+      - LLM_URL=http://llamacpp:8080/v1/chat/completions
+      - PORTFOLIO_DB=/app/data/portfolio.db
+    volumes:
+      - ./backend-data:/app/data
+    depends_on:
+      - mongo
+      - chromadb
+      - embeddings
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: investment-frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  whatsapp-bot:
+    build:
+      context: ./whatsapp-bot
+    container_name: whatsapp-bot
+    restart: always
+    ports:
+      - "8002:8002"
+    environment:
+      - MONGO_URL=mongodb://mongo:27017/whatsapp-bot
+      - CHROMA_URL=http://chromadb:8000
+      - EMBEDDING_URL=http://embeddings:8001/embed
+      - LLM_URL=http://llamacpp:8080/v1/chat/completions
+      - LLM_MODEL=model
+      - LLM_TYPE=openai
+      - AUTO_REPLY=false
+      - WHATSAPP_AUTH_PATH=/usr/src/app/auth
+      - DOWNLOADS_PATH=/usr/src/app/downloads
+      - SERVER_PORT=8002
+      - API_TOKEN=WEBSOCKET_SECRET_123
+    volumes:
+      - ./whatsapp-bot/downloads:/usr/src/app/downloads:Z
+      - ./whatsapp-bot/auth:/usr/src/app/auth:Z
+    depends_on:
+      - mongo
+      - chromadb
+      - embeddings
+
+  mongo:
+    image: mongo:6
+    container_name: mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./whatsapp-bot/data/db:/data/db:Z
+
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: chromadb
+    restart: always
+    ports:
+      - "8001:8000"
+    environment:
+      - CHROMA_SERVER_CORS_ALLOW_ORIGINS=http://localhost:3000
+    volumes:
+      - ./whatsapp-bot/data/chroma:/chroma:Z
+
+  embeddings:
+    build:
+      context: ./whatsapp-bot/embedding-service
+    container_name: embeddings
+    restart: always
+    ports:
+      - "8003:8001"
+    volumes:
+      - ./whatsapp-bot/embedding-service:/app:Z
+    working_dir: /app
+    command: ["python", "main.py"]
+    environment:
+      - TRANSFORMERS_CACHE=/app/cache
+    depends_on:
+      - mongo
+
+  llamacpp:
+    image: ghcr.io/ggerganov/llama.cpp:server
+    container_name: llamacpp
+    restart: always
+    ports:
+      - "8080:8080"
+    command: "-m /models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf --host 0.0.0.0 --port 8080"
+    volumes:
+      - ./backend/models:/models:Z

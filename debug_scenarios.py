@@ -5,7 +5,7 @@ def test_scenario(name, tickers):
     print(f"\n{'='*60}\nEvaluating Scenario: {name}")
     print(f"Tickers: {', '.join(tickers)}\n{'-'*60}")
     
-    url = f"http://localhost:8000/api/analyze"
+    url = f"http://localhost:8020/api/analyze"
     query_params = "&".join([f"tickers={t}" for t in tickers])
     full_url = f"{url}?{query_params}"
     

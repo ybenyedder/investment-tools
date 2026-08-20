@@ -5,3 +5,8 @@ __pycache__/
 chroma_db/
 .git/
 .pytest_cache/
+backend-data/
+backend/models/
+backend/data/
+*.gguf
+frontend/
