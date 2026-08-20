@@ -72,7 +72,7 @@ services:
     container_name: mongo
     restart: always
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"
     volumes:
       - ./whatsapp-bot/data/db:/data/db:Z
 
@@ -81,7 +81,7 @@ services:
     container_name: chromadb
     restart: always
     ports:
-      - "8001:8000"
+      - "127.0.0.1:8001:8000"
     environment:
       - CHROMA_SERVER_CORS_ALLOW_ORIGINS=http://localhost:3000
     volumes:
@@ -93,7 +93,7 @@ services:
     container_name: embeddings
     restart: always
     ports:
-      - "8003:8001"
+      - "127.0.0.1:8003:8001"
     volumes:
       - ./whatsapp-bot/embedding-service:/app:Z
     working_dir: /app
@@ -108,7 +108,7 @@ services:
     container_name: llamacpp
     restart: always
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     command: "-m /models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf --host 0.0.0.0 --port 8080"
     volumes:
       - ./backend/models:/models:Z
