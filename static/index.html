@@ -33,6 +33,14 @@
                     <input type="number" step="0.01" id="volatility" class="form-control" value="0.2">
                 </div>
                 <div class="mb-2">
+                    <label>Algorithm</label>
+                    <select id="algorithm" class="form-control">
+                        <option value="pure_sb">Pure Stochastic Transport</option>
+                        <option value="kalman">Kalman Predictive Prior</option>
+                        <option value="hybrid">Hybrid (Kalman + Transport)</option>
+                    </select>
+                </div>
+                <div class="mb-2">
                     <label>Entropy (ε)</label>
                     <input type="number" step="0.1" id="epsilon" class="form-control" value="5.0">
                 </div>

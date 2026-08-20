@@ -7,8 +7,9 @@ async function runSimulation() {
         target_price: parseFloat(document.getElementById('target_price').value),
         volatility: parseFloat(document.getElementById('volatility').value),
         epsilon: parseFloat(document.getElementById('epsilon').value),
+        algorithm: document.getElementById('algorithm').value,
         steps: 100,
-        num_paths: 10
+        num_paths: 5
     };
 
     const response = await fetch('/api/estimate', {

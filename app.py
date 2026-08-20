@@ -20,6 +20,7 @@ class EstimateRequest(BaseModel):
     epsilon: float = 5.0
     steps: int = 100
     num_paths: int = 5
+    algorithm: str = "pure_sb"
 
 class CalibrateRequest(BaseModel):
     prices: list[float]
@@ -96,12 +97,12 @@ def estimate(req: EstimateRequest):
         
     paths = []
     final_prices = []
+    
     for _ in range(req.num_paths):
-        # Sample target state in log-space
+        # Sample target state in log-space (for SB and Hybrid)
         target_idx = np.random.choice(len(states), p=cond_prob)
         log_XT = states[target_idx]
         
-        # Simulate Brownian bridge in log-space (Exact Schrödinger Bridge for GBM prior)
         t = np.linspace(0, 1, req.steps)
         dt = 1.0 / req.steps
         W = np.random.normal(0, np.sqrt(dt), req.steps)
@@ -109,15 +110,46 @@ def estimate(req: EstimateRequest):
         W = np.cumsum(W)
         W -= t * W[-1] # standard brownian bridge
         
-        # SDE path: X_t = x(1-t) + yt + sigma * W_t
-        log_path = log_init + t * (log_XT - log_init) + sigma * W
+        if req.algorithm == "pure_sb":
+            # Pure Stochastic Transport (Schrödinger Bridge with GBM prior)
+            log_path = log_init + t * (log_XT - log_init) + sigma * W
+            
+        elif req.algorithm == "kalman":
+            # Kalman-like Method: Forward simulate local linear trend model ignoring target constraints
+            avg_drift = (np.log(req.target_price) - log_init) / req.steps
+            log_p = log_init
+            drift = avg_drift
+            log_path = [log_p]
+            for step in range(1, req.steps):
+                drift += np.random.normal(0, (req.volatility/req.steps)*0.2)
+                log_p += drift + np.random.normal(0, req.volatility/np.sqrt(req.steps))
+                log_path.append(log_p)
+            log_path = np.array(log_path)
+            
+        elif req.algorithm == "hybrid":
+            # Hybrid Method: Kalman forward drift but bridged to Sinkhorn Target
+            avg_drift = (log_XT - log_init) / req.steps
+            log_p = log_init
+            drift = avg_drift
+            prior_path = [log_p]
+            for step in range(1, req.steps):
+                drift += np.random.normal(0, (req.volatility/req.steps)*0.5)
+                log_p += drift
+                prior_path.append(log_p)
+            prior_path = np.array(prior_path)
+            
+            # Bridge the Kalman prior to the exact target
+            correction = t * (log_XT - prior_path[-1])
+            log_path = prior_path + correction + (sigma * 0.5) * W
+        else:
+            # Fallback
+            log_path = log_init + t * (log_XT - log_init) + sigma * W
         
         # Exponentiate to get real prices
         path = np.exp(log_path)
         
         paths.append(path.tolist())
         final_prices.append(path[-1])
-        
     avg_path = np.mean(paths, axis=0)
     
     # Technical Indicators on average path

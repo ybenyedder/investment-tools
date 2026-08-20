@@ -30,6 +30,23 @@ def test_estimate_endpoint_basic():
     assert "estimated_roe" in metrics
     assert "estimated_ebitda" in metrics
 
+def test_estimate_endpoint_kalman_and_hybrid():
+    for algo in ["kalman", "hybrid"]:
+        payload = {
+            "initial_price": 100.0,
+            "target_price": 110.0,
+            "volatility": 0.2,
+            "epsilon": 1.0,
+            "steps": 10,
+            "num_paths": 2,
+            "algorithm": algo
+        }
+        response = client.post("/api/estimate", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert "paths" in data
+        assert len(data["paths"]) == 2
+
 def test_calibrate_endpoint_success():
     # Simulate a price series
     prices = [100.0 + i for i in range(30)]
