@@ -58,7 +58,13 @@ async function autoCalibrate() {
     document.getElementById('volatility').value = data.calibrated_volatility;
     document.getElementById('epsilon').value = data.calibrated_epsilon;
 
-    alert(`Calibration complete!\nDetected Volatility: ${data.calibrated_volatility}\nEstimated Epsilon: ${data.calibrated_epsilon}`);
+    let msg = `Calibration complete!\nDetected Volatility: ${data.calibrated_volatility}\nEstimated Epsilon: ${data.calibrated_epsilon}`;
+    
+    if (data.anomaly_detected) {
+        msg += `\n\n⚠️ ${data.anomaly_msg}`;
+    }
+
+    alert(msg);
 }
 
 function updateMetrics(metrics) {

@@ -162,6 +162,38 @@ def estimate(req: EstimateRequest):
         }
     }
 
+def kalman_filter_price(prices, Q_var, R_var):
+    # State: [log_price, log_drift]
+    F = np.array([[1.0, 1.0], 
+                  [0.0, 1.0]])
+    H = np.array([[1.0, 0.0]])
+    
+    Q = np.array([[Q_var, 0], 
+                  [0, Q_var / 10.0]])
+    R = np.array([[R_var]])
+    
+    x = np.array([[np.log(prices[0])], [0.0]])
+    P = np.eye(2)
+    
+    filtered_prices = []
+    
+    for z in prices:
+        # Predict
+        x = F @ x
+        P = F @ P @ F.T + Q
+        
+        # Update
+        Z = np.array([[np.log(z)]])
+        y = Z - H @ x
+        S = H @ P @ H.T + R
+        K = P @ H.T @ np.linalg.inv(S)
+        
+        x = x + K @ y
+        P = (np.eye(2) - K @ H) @ P
+        
+        filtered_prices.append(np.exp(x[0, 0]))
+        
+    return x, P, filtered_prices
 @app.post("/api/calibrate")
 def calibrate(req: CalibrateRequest):
     if len(req.prices) < req.window:
@@ -194,13 +226,36 @@ def calibrate(req: CalibrateRequest):
     period_variance = (latest_vol ** 2) * (req.steps_ahead / 252)
     estimated_epsilon = 2.0 * period_variance
     
+    # Kalman Filter Anomaly Detection
+    Q_var = (latest_vol / np.sqrt(252))**2  # Daily variance
+    R_var = Q_var * 2.0  # Assume measurement noise is higher
+    
+    kf_state, _, _ = kalman_filter_price(prices, Q_var, R_var)
+    
+    # Project target price using KF robust state
+    kf_log_price = kf_state[0, 0]
+    kf_log_drift = kf_state[1, 0]
+    kf_target_log = kf_log_price + kf_log_drift * req.steps_ahead
+    kf_target_price = np.exp(kf_target_log)
+    
+    anomaly_detected = False
+    anomaly_msg = ""
+    deviation = abs(target_price - kf_target_price) / target_price
+    
+    if deviation > 0.15: # 15% deviation is considered a huge wrong estimation
+        anomaly_detected = True
+        anomaly_msg = f"ANOMALY DETECTED: The sliding window target ({round(target_price, 2)}) deviates by {round(deviation*100, 1)}% from the robust Kalman Filter accumulation projection ({round(kf_target_price, 2)})."
+    
     return {
         "calibrated_volatility": round(float(latest_vol), 4),
         "calibrated_target_price": round(float(target_price), 2),
         "calibrated_epsilon": round(float(estimated_epsilon), 4),
         "current_price": round(float(current_price), 2),
         "rolling_volatility": [float(x) for x in rolling_vol],
-        "rolling_drift": [float(x) for x in rolling_drift]
+        "rolling_drift": [float(x) for x in rolling_drift],
+        "kf_target_price": round(float(kf_target_price), 2),
+        "anomaly_detected": anomaly_detected,
+        "anomaly_msg": anomaly_msg
     }
 
 if __name__ == "__main__":
