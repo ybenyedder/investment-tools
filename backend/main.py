@@ -151,7 +151,7 @@ def _get_mongo_db():
 @app.post("/api/analyze")
 def analyze_assets(
     tickers: List[str] = Query(default=["AAPL", "MSFT"]),
-    quant_method: str = Query(default="sharpe", description="Quantitative method to rank by: sharpe, sortino, treynor")
+    quant_method: str = Query(default="sharpe", pattern="^(sharpe|sortino|treynor)$", description="Quantitative method to rank by: sharpe, sortino, treynor")
 ):
     """Analyze a list of tickers, calculating expected returns, risk, and analyst targets."""
     # 1. Fetch 10-year historical data
@@ -631,11 +631,11 @@ def chat_with_llm(request: ChatRequest):
         return {"error": f"LLM Error: {str(e)}"}
 
 @app.get("/api/search_company")
-def search_company(q: str):
+def search_company(q: str = Query(..., min_length=1, max_length=50)):
     """Search for a quoted company by name or ticker using Yahoo Finance."""
     try:
         headers = {'User-Agent': 'Mozilla/5.0'}
-        res = requests.get(f"https://query2.finance.yahoo.com/v1/finance/search?q={q}", headers=headers, timeout=5)
+        res = requests.get(f"https://query2.finance.yahoo.com/v1/finance/search", params={"q": q}, headers=headers, timeout=5)
         if res.status_code == 200:
             quotes = res.json().get('quotes', [])
             return [{"ticker": quote.get('symbol', ''), "name": quote.get('shortname', quote.get('longname', ''))} 
