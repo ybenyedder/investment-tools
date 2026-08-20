@@ -58,17 +58,30 @@ class CalibrateRequest(BaseModel):
         return v
 
 def sinkhorn_knopp(a, b, C, epsilon, max_iter=1000, tol=1e-9):
-    # Stabilized Sinkhorn
-    K = np.exp(-C / epsilon)
-    u = np.ones_like(a)
-    v = np.ones_like(b)
-    for _ in range(max_iter):
-        u_prev = u.copy()
-        v = b / (np.dot(K.T, u) + 1e-15)
-        u = a / (np.dot(K, v) + 1e-15)
-        if np.max(np.abs(u - u_prev)) < tol:
+    # Log-domain Sinkhorn to prevent numerical underflow
+    log_a = np.log(a + 1e-15)
+    log_b = np.log(b + 1e-15)
+    f = np.zeros_like(a)
+    g = np.zeros_like(b)
+    
+    for i in range(max_iter):
+        f_prev = f.copy()
+        
+        arg_g = (f[:, None] - C) / epsilon
+        max_g = np.max(arg_g, axis=0)
+        lse_g = max_g + np.log(np.sum(np.exp(arg_g - max_g), axis=0) + 1e-15)
+        g = epsilon * log_b - epsilon * lse_g
+        
+        arg_f = (g[None, :] - C) / epsilon
+        max_f = np.max(arg_f, axis=1)
+        lse_f = max_f + np.log(np.sum(np.exp(arg_f - max_f), axis=1) + 1e-15)
+        f = epsilon * log_a - epsilon * lse_f
+        
+        if np.max(np.abs(f - f_prev)) < tol:
             break
-    return np.diag(u) @ K @ np.diag(v)
+            
+    P = np.exp((f[:, None] + g[None, :] - C) / epsilon)
+    return P
 
 def compute_rsi(data, window=14):
     diff = np.diff(data)
@@ -125,62 +138,61 @@ def estimate(req: EstimateRequest):
     # For cost C = (X-Y)^2, the variance of the prior is epsilon/2 over T=1.
     sigma = np.sqrt(req.epsilon / 2.0)
         
-    paths = []
-    final_prices = []
+    # Pre-sample target states for all paths
+    target_indices = np.random.choice(len(states), size=req.num_paths, p=cond_prob)
+    log_XT_all = states[target_indices][:, np.newaxis] # Shape: (num_paths, 1)
     
-    for _ in range(req.num_paths):
-        # Sample target state in log-space (for SB and Hybrid)
-        target_idx = np.random.choice(len(states), p=cond_prob)
-        log_XT = states[target_idx]
+    t = np.linspace(0, 1, req.steps)
+    dt = 1.0 / req.steps
+    
+    # Pre-generate Brownian bridges for all paths
+    W = np.random.normal(0, np.sqrt(dt), (req.num_paths, req.steps))
+    W[:, 0] = 0
+    W = np.cumsum(W, axis=1)
+    W -= t * W[:, -1:] # Broadcast shape (req.steps,) and (num_paths, 1)
+    
+    if req.algorithm == "pure_sb":
+        # Pure Stochastic Transport (Schrödinger Bridge with GBM prior)
+        log_path = log_init + t * (log_XT_all - log_init) + sigma * W
         
-        t = np.linspace(0, 1, req.steps)
-        dt = 1.0 / req.steps
-        W = np.random.normal(0, np.sqrt(dt), req.steps)
-        W[0] = 0
-        W = np.cumsum(W)
-        W -= t * W[-1] # standard brownian bridge
+    elif req.algorithm == "kalman":
+        # Kalman-like Method vectorized
+        avg_drift = (np.log(req.target_price) - log_init) / req.steps
         
-        if req.algorithm == "pure_sb":
-            # Pure Stochastic Transport (Schrödinger Bridge with GBM prior)
-            log_path = log_init + t * (log_XT - log_init) + sigma * W
-            
-        elif req.algorithm == "kalman":
-            # Kalman-like Method: Forward simulate local linear trend model ignoring target constraints
-            avg_drift = (np.log(req.target_price) - log_init) / req.steps
-            log_p = log_init
-            drift = avg_drift
-            log_path = [log_p]
-            for step in range(1, req.steps):
-                drift += np.random.normal(0, (req.volatility/req.steps)*0.2)
-                log_p += drift + np.random.normal(0, req.volatility/np.sqrt(req.steps))
-                log_path.append(log_p)
-            log_path = np.array(log_path)
-            
-        elif req.algorithm == "hybrid":
-            # Hybrid Method: Kalman forward drift but bridged to Sinkhorn Target
-            avg_drift = (log_XT - log_init) / req.steps
-            log_p = log_init
-            drift = avg_drift
-            prior_path = [log_p]
-            for step in range(1, req.steps):
-                drift += np.random.normal(0, (req.volatility/req.steps)*0.5)
-                log_p += drift
-                prior_path.append(log_p)
-            prior_path = np.array(prior_path)
-            
-            # Bridge the Kalman prior to the exact target
-            correction = t * (log_XT - prior_path[-1])
-            log_path = prior_path + correction + (sigma * 0.5) * W
-        else:
-            # Fallback
-            log_path = log_init + t * (log_XT - log_init) + sigma * W
+        drift_shocks = np.random.normal(0, (req.volatility/req.steps)*0.2, (req.num_paths, req.steps))
+        drift_shocks[:, 0] = avg_drift
+        drifts = np.cumsum(drift_shocks, axis=1)
         
-        # Exponentiate to get real prices
-        path = np.exp(log_path)
+        price_shocks = np.random.normal(0, req.volatility/np.sqrt(req.steps), (req.num_paths, req.steps))
+        price_shocks[:, 0] = 0
         
-        paths.append(path.tolist())
-        final_prices.append(path[-1])
-    avg_path = np.mean(paths, axis=0)
+        # log_p[t] = log_p[t-1] + drift[t] + shock[t]
+        log_path_increments = drifts[:, 1:] + price_shocks[:, 1:]
+        log_path = log_init + np.cumsum(log_path_increments, axis=1)
+        log_path = np.column_stack((np.full((req.num_paths, 1), log_init), log_path))
+        
+    elif req.algorithm == "hybrid":
+        # Hybrid Method vectorized
+        avg_drift = (log_XT_all - log_init) / req.steps
+        
+        drift_shocks = np.random.normal(0, (req.volatility/req.steps)*0.5, (req.num_paths, req.steps))
+        drift_shocks[:, 0] = avg_drift.flatten()
+        drifts = np.cumsum(drift_shocks, axis=1)
+        
+        prior_path = log_init + np.cumsum(drifts[:, 1:], axis=1)
+        prior_path = np.column_stack((np.full((req.num_paths, 1), log_init), prior_path))
+        
+        correction = t * (log_XT_all - prior_path[:, -1:])
+        log_path = prior_path + correction + (sigma * 0.5) * W
+    else:
+        # Fallback
+        log_path = log_init + t * (log_XT_all - log_init) + sigma * W
+        
+    # Exponentiate to get real prices
+    path_matrix = np.exp(log_path)
+    paths = path_matrix.tolist()
+    final_prices = path_matrix[:, -1].tolist()
+    avg_path = np.mean(path_matrix, axis=0)
     
     # Technical Indicators on average path
     rsi = compute_rsi(avg_path)

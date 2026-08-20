@@ -12,15 +12,25 @@ async function runSimulation() {
         num_paths: 5
     };
 
-    const response = await fetch('/api/estimate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
-    const data = await response.json();
-    
-    updateMetrics(data.metrics);
-    drawCharts(data.paths, data.indicators);
+    try {
+        const response = await fetch('/api/estimate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            alert("Error: " + (data.detail ? JSON.stringify(data.detail) : "Simulation failed"));
+            return;
+        }
+        
+        updateMetrics(data.metrics);
+        drawCharts(data.paths, data.indicators);
+    } catch (err) {
+        alert("Network error: " + err.message);
+    }
 }
 
 async function runHybridSimulation() {
@@ -48,17 +58,23 @@ async function autoCalibrate() {
         steps_ahead: 100
     };
 
-    const response = await fetch('/api/calibrate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    });
-    const data = await response.json();
+    try {
+        const response = await fetch('/api/calibrate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await response.json();
 
-    if (data.error) {
-        alert(data.error);
-        return;
-    }
+        if (!response.ok) {
+            alert("Error: " + (data.detail ? JSON.stringify(data.detail) : "Calibration failed"));
+            return;
+        }
+
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
 
     // Update the UI parameters with the calibrated values
     document.getElementById('init_price').value = data.current_price;
@@ -73,6 +89,9 @@ async function autoCalibrate() {
     }
 
     alert(msg);
+    } catch (err) {
+        alert("Network error: " + err.message);
+    }
 }
 
 function updateMetrics(metrics) {
