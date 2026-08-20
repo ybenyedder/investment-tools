@@ -87,6 +87,11 @@ def health():
     """Liveness probe for monitoring / reverse proxies."""
     return {"status": "ok", "time": datetime.datetime.now(datetime.timezone.utc).isoformat()}
 
+@app.get("/api/version")
+def version():
+    """Returns the current API version."""
+    return {"version": "1.0.0", "service": "investment-backend"}
+
 # ---------------------------------------------------------------------------
 # Auth & virtual portfolio (paper trading)
 # ---------------------------------------------------------------------------

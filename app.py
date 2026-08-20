@@ -24,6 +24,10 @@ def index():
 def health():
     return {"status": "ok"}
 
+@app.get("/api/version")
+def version():
+    return {"version": "1.0.0", "service": "sb-estimator"}
+
 class EstimateRequest(BaseModel):
     initial_price: float = Field(default=100.0, gt=0)
     target_price: float = Field(default=110.0, gt=0)
