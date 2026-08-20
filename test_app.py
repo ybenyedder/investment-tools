@@ -58,3 +58,25 @@ def test_calibrate_endpoint_insufficient_data():
     assert response.status_code == 200
     data = response.json()
     assert "error" in data
+
+def test_calibrate_endpoint_anomaly():
+    # Simulate a steady price series, then a massive spike to trigger the Kalman Filter anomaly
+    prices = [100.0] * 25
+    prices.extend([150.0, 200.0, 300.0, 500.0]) # Huge sudden spike
+    
+    payload = {
+        "prices": prices,
+        "window": 10,
+        "steps_ahead": 50
+    }
+    response = client.post("/api/calibrate", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    
+    assert "kf_target_price" in data
+    assert "anomaly_detected" in data
+    assert "anomaly_msg" in data
+    
+    # Because of the massive spike, the sliding window drift will be huge compared to the KF state
+    assert data["anomaly_detected"] is True
+    assert "ANOMALY DETECTED" in data["anomaly_msg"]

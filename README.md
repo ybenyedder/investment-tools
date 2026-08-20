@@ -11,6 +11,8 @@ A full-stack web application (FastAPI backend + JavaScript frontend) that utiliz
 *   **Technical Indicator Estimation:** Dynamically computes the Relative Strength Index (RSI - 14 period) and Moving Average Convergence Divergence (MACD) based on the simulated average price path.
 *   **Fundamental Estimation:** Calculates mock fundamentals at the target timestamp, estimating the P/E Ratio, Return on Equity (ROE), and EBITDA based on the simulated final price.
 *   **Interactive Dashboard:** A frontend UI that allows you to tweak Entropy ($\epsilon$), Volatility, and Target Prices in real-time and visualize the resulting paths and indicators using `Chart.js`.
+*   **Auto-Calibration via Sliding Window:** Automatically calibrates the volatility, target price, and entropy ($\epsilon$) based on the variance and drift detected in a sliding historical time-series window.
+*   **Kalman Filter Anomaly Detection:** Utilizes a robust 1D Kalman Filter (tracking price and drift states) to smooth the time series. If the sliding window's short-term projection deviates from the Kalman Filter's robust projection by >15%, the system immediately flags a "huge wrong estimation" anomaly.
 
 ### How the Estimation is Done (Processing)
 1.  **State Space Discretization:** The backend (`app.py`) defines a discretized grid of possible stock prices centered around the initial price.
