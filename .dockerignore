@@ -1,0 +1,7 @@
+whatsapp-bot/
+venv/
+__pycache__/
+*.db
+chroma_db/
+.git/
+.pytest_cache/
