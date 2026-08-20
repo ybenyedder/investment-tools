@@ -23,6 +23,13 @@ async function runSimulation() {
     drawCharts(data.paths, data.indicators);
 }
 
+async function runHybridSimulation() {
+    const originalAlgorithm = document.getElementById('algorithm').value;
+    document.getElementById('algorithm').value = 'hybrid';
+    await runSimulation();
+    document.getElementById('algorithm').value = originalAlgorithm;
+}
+
 async function autoCalibrate() {
     // Generate a mock historical price series (100 days) with some variation/regime change
     let prices = [120.0];

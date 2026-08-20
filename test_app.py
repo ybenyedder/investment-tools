@@ -47,6 +47,26 @@ def test_estimate_endpoint_kalman_and_hybrid():
         assert "paths" in data
         assert len(data["paths"]) == 2
 
+def test_estimate_endpoint_hybrid_specific():
+    payload = {
+        "initial_price": 120.0,
+        "target_price": 130.0,
+        "volatility": 0.25,
+        "epsilon": 2.0,
+        "steps": 15,
+        "num_paths": 3,
+        "algorithm": "hybrid"
+    }
+    response = client.post("/api/estimate", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert "paths" in data
+    assert len(data["paths"]) == 3
+    assert len(data["paths"][0]) == 15
+    metrics = data["metrics"]
+    assert metrics["mean_final_price"] > 0
+
+
 def test_calibrate_endpoint_success():
     # Simulate a price series
     prices = [100.0 + i for i in range(30)]
