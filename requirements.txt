@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+numpy
+pandas
+requests
+beautifulsoup4
+chromadb
+sqlalchemy

@@ -1,86 +1,45 @@
-# Advanced Investment Analysis Platform
+# Quantitative Investment Tools Suite
 
-A highly sophisticated, full-stack Investment Analysis Tool designed to help users evaluate financial assets, rank them using quantitative methodologies, perform automated technical analysis, and interact with a fully local LLM assistant to gain deep financial insights.
+This repository contains a suite of advanced quantitative finance tools designed for stock variation analysis, time-series estimation, and financial data aggregation. 
 
-## 🚀 Key Features
+## 1. Schrödinger Bridge & Fundamentals Estimator
 
-*   **Global Asset Universe:** Instantly analyze massive portfolios, including the live S&P 500 (scraped dynamically), World ETFs, US Tech, and major European and Asian indices.
-*   **Fundamental Data Engine:** Fetches live market data and deep fundamental KPIs via `yfinance` including:
-    *   PEG Ratio
-    *   Return on Equity (ROE)
-    *   Debt-to-Equity (DTI)
-    *   Profit and Operating Margins
-    *   Free Cash Flow vs. Total Debt
-*   **Advanced Quantitative Models:**
-    *   **Sharpe Ratio, Sortino Ratio, Treynor Ratio:** Dynamically rank assets based on risk-adjusted return profiles.
-    *   **Stochastic Modeling:** Project future price boundaries using classical **Black-Scholes** modeling or the **Bachelier** Arithmetic Brownian Motion model.
-    *   **Reinforcement Learning (RL):** Automated RL-based backtesting and trading signal generation (BUY/HOLD/SELL) trained on sliced historical windows.
-    *   **SARIMA Time-Series:** Forecast 1-year future asset prices using statistical time-series forecasting.
-*   **Fully Private Local LLM Assistant:**
-    *   Powered by a hyper-efficient `TinyLlama` model running completely locally via `llama-cpp-python`.
-    *   Context-aware architecture capable of reading the live analysis data (TAM, Price, RL Actions) to answer your specific financial questions securely—without sending your data to the cloud.
-    *   Fully sanitized input pipeline using `bleach` to prevent prompt injection and XSS.
-*   **Modern Interactive UI:** Built with **Next.js**, React, and Recharts, featuring a dynamic data table and 10-year historical comparison charts.
+A full-stack web application (FastAPI backend + JavaScript frontend) that utilizes Entropic Optimal Transport to simulate realistic stock price variations and estimate future financial metrics.
 
-## 🛠️ Technology Stack
+### Features
+*   **Stochastic Path Simulation:** Generates multiple synthetic price paths connecting an initial price to a target price distribution using the Schrödinger Bridge framework.
+*   **Technical Indicator Estimation:** Dynamically computes the Relative Strength Index (RSI - 14 period) and Moving Average Convergence Divergence (MACD) based on the simulated average price path.
+*   **Fundamental Estimation:** Calculates mock fundamentals at the target timestamp, estimating the P/E Ratio, Return on Equity (ROE), and EBITDA based on the simulated final price.
+*   **Interactive Dashboard:** A frontend UI that allows you to tweak Entropy ($\epsilon$), Volatility, and Target Prices in real-time and visualize the resulting paths and indicators using `Chart.js`.
 
-*   **Backend:** Python 3, FastAPI, Pandas, YFinance, Scikit-Learn, PyPortfolioOpt, Statsmodels, Llama-CPP, Pytest
-*   **Frontend:** JavaScript, Next.js, React, Recharts
-*   **Security:** Bleach (Input sanitization)
+### How the Estimation is Done (Processing)
+1.  **State Space Discretization:** The backend (`app.py`) defines a discretized grid of possible stock prices centered around the initial price.
+2.  **Marginal Distributions:** It defines an initial probability distribution (a sharp peak at the current price) and a target probability distribution (a Gaussian curve centered at the expected target price with variance proportional to user-defined volatility).
+3.  **Entropic Optimal Transport (Sinkhorn):** The backend runs the **Sinkhorn-Knopp algorithm**. It takes the initial distribution, target distribution, a cost matrix (squared distance between price states), and the user-defined Entropy ($\epsilon$) parameter. It computes the Optimal Transport Plan—a transition probability matrix that minimizes transport cost while maximizing entropy (randomness).
+4.  **Brownian Bridge Simulation:** To generate the actual time-series paths, the algorithm samples a final target state using the Sinkhorn transition probabilities. It then connects the initial price to this target state using a randomized Brownian Bridge (adding stochastic noise along the path).
+5.  **Metrics Calculation:** The average of these stochastic paths is calculated. Standard formulas (Exponential Moving Averages) are applied to this path to compute MACD and RSI. Stochastic fundamental variables are generated around the mean final price.
 
-## 📦 Installation & Setup
+### Where the Backend Gets the Information
+*   **Data Source:** For this specific estimation tool, the backend relies purely on **mathematical generation based on user inputs** (Initial Price, Target Price, Volatility, Entropy). It does not fetch live market prices for the simulation; it is a generative model used to study theoretical price variations and stress-test scenarios.
 
-### 1. Backend Setup (FastAPI)
+---
 
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
-2. Create and activate a Python virtual environment:
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   ```
-3. Install the dependencies:
-   ```bash
-   pip install fastapi uvicorn yfinance pandas numpy scikit-learn PyPortfolioOpt statsmodels lxml requests bleach pytest llama-cpp-python huggingface_hub
-   ```
-4. Download the Local LLM:
-   Run the setup script to securely download the TinyLlama GGUF model:
-   ```bash
-   ./install_llm.sh
-   ```
-5. Run the backend server:
-   ```bash
-   uvicorn main:app --host 0.0.0.0 --port 8000
-   ```
+## 2. Corporate Financial Results Tracker & Database
 
-### 2. Frontend Setup (Next.js)
+A robust data pipeline and CLI tool (`finance_tracker.py`) that aggregates the latest corporate earnings reports, maintaining a historical time series and a semantic vector search database.
 
-1. Open a new terminal and navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
-2. Install Node.js dependencies:
-   ```bash
-   npm install
-   ```
-3. Run the development server:
-   ```bash
-   npm run dev
-   ```
+### Features
+*   **Automated Scraping:** Connects to financial news portals to download the latest quarterly results.
+*   **Dual-Database Architecture:** 
+    *   **SQLite (Time-Series):** Stores structured tabular data (Company Code, Name, Sales, Net Profit, EPS, Result Date). It enforces strict constraints to automatically detect if history is new and ignores duplicate entries.
+    *   **ChromaDB (Vector DB):** Converts the financial results into text embeddings. If you query a misspelled company name, it performs a semantic similarity search to find the correct data.
+*   **Time-Series Generation:** Extracts a company's historical earnings and formats them into a continuous time series.
+*   **Automated Plotting:** If `matplotlib` is installed, it automatically generates a `.png` chart visualizing the historical Net Sales and Net Profit trajectories.
 
-## 🧪 Testing
+### How the Processing is Done
+1.  **Data Extraction:** The script bypasses unreliable HTML table parsing. Instead, it intercepts the hidden Next.js JSON payload (`__NEXT_DATA__`) embedded directly in the page source, ensuring 100% accurate and clean data extraction.
+2.  **Validation & Upserting:** The script iterates through the extracted JSON. It attempts to insert each record into SQLite. If the `(company_name, result_date)` combination already exists, it is safely ignored (meaning it natively handles checking for "new history").
+3.  **Vectorization:** For new records, the script synthesizes a natural language summary (e.g., *"Company X reported results on Date. Net Sales: Y Cr..."*) and embeds this text into ChromaDB along with queryable metadata.
 
-The platform includes a massive non-regression test suite (18+ tests covering deep architectural integrity, edge cases, error handling, quantitative pipelines, and API validation). 
-
-To run the backend tests:
-```bash
-cd backend
-source venv/bin/activate
-pytest test_api.py -v
-```
-
-## 📜 License
-
-MIT License. Feel free to fork, build, and deploy!
+### Where the Backend Gets the Information
+*   **Data Source:** The script fetches live, real-world corporate financial results directly from the **Business Standard Latest Results List** (`https://www.business-standard.com/companies/results/latest-results-list`).
