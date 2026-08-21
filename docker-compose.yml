@@ -4,8 +4,6 @@ services:
     build: .
     container_name: sb-estimator
     restart: always
-    ports:
-      - "8000:8000"
 
   # Quantitative Investment Analysis API — internal 8000, host 8020
   backend:

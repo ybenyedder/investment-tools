@@ -3,6 +3,14 @@ const nextConfig = {
   async rewrites() {
     return [
       {
+        source: '/api/estimate',
+        destination: 'http://web:8000/api/estimate'
+      },
+      {
+        source: '/api/calibrate',
+        destination: 'http://web:8000/api/calibrate'
+      },
+      {
         source: '/api/:path*',
         destination: `${process.env.BACKEND_URL || 'http://backend:8000'}/api/:path*`
       }

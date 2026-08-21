@@ -602,7 +602,7 @@ export default function Home() {
               </div>
               <div className="flex items-center gap-3">
                 <a
-                  href={`http://${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}:8000/?company=${selectedCompanyInfo.ticker}`}
+                  href={`/schrodinger/index.html?company=${selectedCompanyInfo.ticker}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-sm transition-colors cursor-pointer"
