@@ -22,8 +22,16 @@ from portfolio import (
     RegisterRequest, LoginRequest, TradeRequest, ProjectionRequest,
     get_current_user,
 )
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from fastapi import Request
 
 app = FastAPI(title="Investment Analysis API")
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Secure CORS: Allow specific origins (localhost for dev, and production URL)
 ALLOWED_ORIGINS = os.getenv(
@@ -154,7 +162,9 @@ def _get_mongo_db():
     return _mongo_client.get_database("investment_tools")
 
 @app.post("/api/analyze")
+@limiter.limit("10/minute")
 def analyze_assets(
+    request: Request,
     tickers: List[str] = Query(default=["AAPL", "MSFT"]),
     quant_method: str = Query(default="sharpe", description="Quantitative method to rank by: sharpe, sortino, treynor")
 ):
@@ -529,21 +539,23 @@ def analyze_assets(
         "plot_data": plot_data
     }
 
-from typing import Optional
+from typing import Optional, List
+from fastapi import Request
 
 class ChatRequest(BaseModel):
     prompt: str
-    context: list = []
+    context: Optional[List[dict]] = []
     provider: str = "local"
     api_key: Optional[str] = None
 
 @app.post("/api/chat")
-def chat_with_llm(request: ChatRequest):
+@limiter.limit("5/minute")
+def chat(req_obj: ChatRequest, request: Request):
     """LLM Chat endpoint supporting Local Llama and Remote OpenAI for financial queries."""
     try:
         import bleach
         # SECURITY: Sanitize the user input before passing it to the backend model
-        clean_prompt = bleach.clean(request.prompt)
+        clean_prompt = bleach.clean(req_obj.prompt)
         
         # Build prompt with context
         context_str = ""
@@ -683,7 +695,8 @@ class InsightRequest(BaseModel):
     name: str
 
 @app.post("/api/company/extract-insights")
-def extract_company_insights(req: InsightRequest):
+@limiter.limit("5/minute")
+def extract_company_insights(req: InsightRequest, request: Request):
     # 1. Fetch from ChromaDB
     from news_correlation import fetch_recent_news
     news_items = fetch_recent_news(req.ticker, req.name, limit=10)

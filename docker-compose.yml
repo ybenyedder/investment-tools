@@ -58,7 +58,7 @@ services:
       - WHATSAPP_AUTH_PATH=/usr/src/app/auth
       - DOWNLOADS_PATH=/usr/src/app/downloads
       - SERVER_PORT=8002
-      - API_TOKEN=WEBSOCKET_SECRET_123
+      - API_TOKEN=${WHATSAPP_API_TOKEN:-WEBSOCKET_SECRET_123}
     volumes:
       - ./whatsapp-bot/downloads:/usr/src/app/downloads:Z
       - ./whatsapp-bot/auth:/usr/src/app/auth:Z

@@ -7,8 +7,15 @@ import pandas as pd
 import uvicorn
 import os
 import math
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from fastapi import Request
 
 app = FastAPI()
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Mount static directory for frontend
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
@@ -103,7 +110,8 @@ def compute_macd(data, slow=26, fast=12, signal=9):
     return macd_line.values, signal_line.values
 
 @app.post("/api/estimate")
-def estimate(req: EstimateRequest):
+@limiter.limit("10/minute")
+def run_estimation(req: EstimateRequest, request: Request):
     # 1. Discretize state space in log-price (Geometric Brownian Motion prior)
     log_init = np.log(req.initial_price)
     log_target = np.log(req.target_price)
@@ -269,7 +277,8 @@ def kalman_filter_price(prices, Q_var, R_var):
         
     return x, P, filtered_prices
 @app.post("/api/calibrate")
-def calibrate(req: CalibrateRequest):
+@limiter.limit("5/minute")
+def run_calibration(req: CalibrateRequest, request: Request):
     # Need at least window+1 prices to produce window log-returns
     if len(req.prices) < req.window + 1:
         return {"error": "Not enough data for the sliding window."}
