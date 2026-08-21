@@ -364,3 +364,31 @@ def test_compute_black_scholes():
     assert data["call_price"] > 0
     assert data["put_price"] > 0
     assert abs(data["call_price"] - 10.45) < 0.1
+
+@patch("news_correlation.fetch_recent_news")
+def test_extract_company_insights_no_data(mock_fetch):
+    mock_fetch.return_value = []
+    response = client.post("/api/company/extract-insights", json={"ticker": "AAPL", "name": "Apple Inc."})
+    assert response.status_code == 200
+    assert response.json()["status"] == "no_data"
+
+@patch("news_correlation.fetch_recent_news")
+@patch("main.requests.post")
+@patch("main._get_mongo_db")
+def test_extract_company_insights_success(mock_mongo, mock_post, mock_fetch):
+    mock_fetch.return_value = [{"text": "Great quarterly earnings!"}]
+    mock_post.return_value.json.return_value = {
+        "choices": [{"message": {"content": "Company is doing great."}}]
+    }
+    mock_db = mock_mongo.return_value
+    mock_db.companies_info.find_one.return_value = {"ticker": "AAPL", "current_price": 150.0}
+    
+    response = client.post("/api/company/extract-insights", json={"ticker": "AAPL", "name": "Apple Inc."})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["insights"]["ticker"] == "AAPL"
+    assert data["insights"]["extracted_text"] == "Company is doing great."
+    
+    # Check if mongodb insert was called
+    mock_db.company_insights.insert_one.assert_called_once()

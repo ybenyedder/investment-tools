@@ -18,6 +18,8 @@ export default function Home() {
   const [chatLoading, setChatLoading] = useState(false);
   const [selectedCompanyInfo, setSelectedCompanyInfo] = useState(null);
   const [llmProvider, setLlmProvider] = useState("local");
+  const [documentInsights, setDocumentInsights] = useState(null);
+  const [loadingInsights, setLoadingInsights] = useState(false);
   const [llmApiKey, setLlmApiKey] = useState("");
 
   // Search State
@@ -122,6 +124,27 @@ export default function Home() {
       .then(data => setUniverse(data))
       .catch(console.error);
   }, []);
+
+  const fetchDocumentInsights = async (ticker, name) => {
+    setLoadingInsights(true);
+    try {
+      const response = await fetch('/api/company/extract-insights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticker, name })
+      });
+      const resData = await response.json();
+      if (resData.status === 'success') {
+        setDocumentInsights(resData.insights);
+      } else {
+        alert("No documents found or error extracting insights.");
+      }
+    } catch (error) {
+      console.error('Error fetching insights:', error);
+      alert('Failed to generate insights.');
+    }
+    setLoadingInsights(false);
+  };
 
   const analyze = async () => {
     setLoading(true);
@@ -444,7 +467,7 @@ export default function Home() {
               </thead>
               <tbody className="text-slate-600">
                 {data.top_10.map((item, i) => (
-                  <tr key={i} onClick={() => setSelectedCompanyInfo(item)} className="border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer">
+                  <tr key={i} onClick={() => { setSelectedCompanyInfo(item); setDocumentInsights(null); }} className="border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer">
                     <td className="p-3">
                       <strong className="text-slate-900 text-base">{item.ticker}</strong><br/>
                       <small className="text-slate-500">{item.name}</small>
@@ -578,6 +601,14 @@ export default function Home() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
+                <a
+                  href={`http://${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}:8000/?company=${selectedCompanyInfo.ticker}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-sm transition-colors cursor-pointer"
+                >
+                  🧪 Schrödinger Estimator
+                </a>
                 <button
                   onClick={() => openTrade({ ticker: selectedCompanyInfo.ticker, name: selectedCompanyInfo.name, price: selectedCompanyInfo.current_price, side: 'buy' })}
                   className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-sm transition-colors cursor-pointer"
@@ -656,6 +687,32 @@ export default function Home() {
                       ) : (
                         <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-100 text-sm text-slate-500 italic text-center">
                           {selectedCompanyInfo.latest_news || "No recent news found in WhatsApp DB."}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="bg-emerald-50/50 rounded-xl p-5 border border-emerald-100">
+                    <div className="flex justify-between items-center mb-4 border-b border-emerald-100 pb-2">
+                      <h3 className="text-lg font-bold text-emerald-900">AI Document Insights</h3>
+                      <button 
+                        onClick={() => fetchDocumentInsights(selectedCompanyInfo.ticker, selectedCompanyInfo.name)}
+                        disabled={loadingInsights}
+                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded shadow-sm transition-colors disabled:opacity-50"
+                      >
+                        {loadingInsights ? 'Extracting...' : 'Extract from DB'}
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      {documentInsights ? (
+                        <div className="bg-white p-4 rounded-lg shadow-sm border border-emerald-100 text-sm text-slate-700 leading-relaxed whitespace-pre-line">
+                          <div className="text-xs text-emerald-600 font-bold mb-2">Timestamp: {new Date(documentInsights.timestamp).toLocaleString()}</div>
+                          {documentInsights.extracted_text}
+                        </div>
+                      ) : (
+                        <div className="bg-white p-4 rounded-lg shadow-sm border border-emerald-100 text-sm text-slate-500 italic text-center">
+                          Click extract to analyze correlated documents/PDFs using the local LLM.
                         </div>
                       )}
                     </div>

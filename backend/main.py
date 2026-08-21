@@ -677,3 +677,67 @@ def compute_black_scholes(req: BSRequest):
         "put_price": put_price
     }
 
+
+class InsightRequest(BaseModel):
+    ticker: str
+    name: str
+
+@app.post("/api/company/extract-insights")
+def extract_company_insights(req: InsightRequest):
+    # 1. Fetch from ChromaDB
+    from news_correlation import fetch_recent_news
+    news_items = fetch_recent_news(req.ticker, req.name, limit=10)
+    
+    if not news_items:
+        return {"status": "no_data", "insights": None}
+    
+    # 2. Combine texts
+    combined_text = "\n\n".join([item['text'] for item in news_items])
+    
+    # 3. Ask LLM to extract company details
+    llm_url = os.getenv("LLM_URL", "http://localhost:8080/v1/chat/completions")
+    prompt = f"Extract key financial information, events, numbers, and sentiment regarding {req.name} ({req.ticker}) from the following documents:\n\n{combined_text[:3000]}"
+    
+    try:
+        response = requests.post(llm_url, json={
+            "messages": [
+                {"role": "system", "content": "You are a financial analyst. Extract key information from the user's text."},
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": 0.2,
+            "max_tokens": 500
+        }, timeout=60).json()
+        
+        extracted_text = response['choices'][0]['message']['content'] if 'choices' in response else "Failed to extract"
+    except Exception as e:
+        extracted_text = f"LLM Error: {e}"
+        
+    # 4. Save to MongoDB with timestamp and correlate with current company details
+    db = _get_mongo_db()
+    company_detail = db.companies_info.find_one({"ticker": req.ticker})
+    if company_detail:
+        company_detail.pop("_id", None)
+        
+    insight_record = {
+        "ticker": req.ticker,
+        "name": req.name,
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "extracted_text": extracted_text,
+        "source_count": len(news_items),
+        "company_state_at_time": company_detail
+    }
+    
+    db.company_insights.insert_one(insight_record)
+    
+    insight_record.pop("_id", None)
+    return {"status": "success", "insights": insight_record}
+
+@app.get("/api/company/insights/{ticker}")
+def get_company_insights(ticker: str):
+    db = _get_mongo_db()
+    cursor = db.company_insights.find({"ticker": ticker}).sort("timestamp", -1)
+    results = []
+    for doc in cursor:
+        doc.pop("_id", None)
+        results.append(doc)
+    return {"ticker": ticker, "history": results}

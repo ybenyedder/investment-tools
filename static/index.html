@@ -13,7 +13,16 @@
 </head>
 <body>
 <div class="container-fluid">
-    <h2 class="mb-4">Schrödinger Bridge Finance Estimator</h2>
+    <h2 class="mb-4">Schrödinger Bridge Finance Estimator <span id="company-name"></span></h2>
+    
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const company = urlParams.get('company');
+        if (company) {
+            document.getElementById('company-name').textContent = `- ${company}`;
+            document.title = `Schrödinger Bridge - ${company}`;
+        }
+    </script>
     
     <div class="row">
         <!-- Controls -->
