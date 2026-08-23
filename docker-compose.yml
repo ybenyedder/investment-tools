@@ -28,6 +28,22 @@ services:
       - chromadb
       - embeddings
 
+  pdf-processor:
+    build:
+      context: ./backend
+    container_name: pdf-processor
+    restart: always
+    command: ["python", "pdf_processor.py"]
+    environment:
+      - MONGO_URL=mongodb://mongo:27017/whatsapp-bot
+      - LLM_URL=http://llamacpp:8080/v1/chat/completions
+    volumes:
+      - ./backend-data:/app/data
+      - ./whatsapp-bot/downloads:/app/downloads:Z
+    depends_on:
+      - mongo
+      - llamacpp
+
   frontend:
     build:
       context: ./frontend
