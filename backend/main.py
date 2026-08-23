@@ -445,9 +445,9 @@ def analyze_assets(
         
         try:
             from news_correlation import calculate_news_impact
-            news_data = calculate_news_impact(ticker, ticker_info.get("shortName", ticker))
-        except Exception:
-            news_data = {"impact_score": 0.0, "news_count": 0, "news_list": []}
+            news_data = calculate_news_impact(ticker, ticker_info.get("shortName", ticker), hist_data=ticker_hist)
+        except Exception as e:
+            news_data = {"impact_score": 0.0, "news_count": 0, "news_list": [], "price_correlation": 0.0}
 
         company_data = {
             "ticker": ticker,
@@ -466,6 +466,7 @@ def analyze_assets(
             "news_impact_score": news_data["impact_score"],
             "news_count": news_data["news_count"],
             "news_list": news_data.get("news_list", []),
+            "news_price_correlation": news_data.get("price_correlation", 0.0),
             "sharpe_ratio": (exp_return - risk_free_rate) / risk if risk > 0 else 0,
             "analyst_target_price": target_mean_price,
             "analyst_expected_return": analyst_upside,
@@ -562,7 +563,7 @@ def chat(req_obj: ChatRequest, request: Request):
         if request.context:
             import json
             # Filter context to essential fields to prevent exceeding LLM context window limit
-            essential_keys = ["ticker", "name", "current_price", "sharpe_ratio", "news_impact_score", "analyst_target_price", "rl_action", "tam_b", "sam_b", "som_b", "peg_ratio", "kl_divergence", "log_likelihood", "skewness", "kurtosis", "var_95", "max_drawdown", "revenue_volatility", "net_income_volatility", "opex_volatility", "capex_volatility", "net_financial_position_volatility"]
+            essential_keys = ["ticker", "name", "current_price", "sharpe_ratio", "news_impact_score", "news_price_correlation", "analyst_target_price", "rl_action", "tam_b", "sam_b", "som_b", "peg_ratio", "kl_divergence", "log_likelihood", "skewness", "kurtosis", "var_95", "max_drawdown", "revenue_volatility", "net_income_volatility", "opex_volatility", "capex_volatility", "net_financial_position_volatility"]
             filtered_context = [{k: item[k] for k in essential_keys if k in item} for item in request.context[:5]]
             context_json = json.dumps(filtered_context)
             # Log the full JSON to the backend console for debugging (unbuffered)

@@ -392,3 +392,30 @@ def test_extract_company_insights_success(mock_mongo, mock_post, mock_fetch):
     
     # Check if mongodb insert was called
     mock_db.company_insights.insert_one.assert_called_once()
+
+@patch("news_correlation.fetch_recent_news")
+def test_analyze_assets_news_price_correlation(mock_fetch_news):
+    from datetime import datetime, timedelta
+    import pandas as pd
+    
+    # Create mock news items over several days
+    mock_news = []
+    base_date = datetime.utcnow()
+    for i in range(10):
+        mock_news.append({
+            "id": f"msg_{i}",
+            "text": "surge buy growth" if i % 2 == 0 else "drop sell loss",
+            "distance": 0.5,
+            "timestamp": base_date - timedelta(days=i)
+        })
+    mock_fetch_news.return_value = mock_news
+
+    response = client.post("/api/analyze?tickers=AAPL")
+    assert response.status_code == 200
+    data = response.json()
+    
+    assert "analysis" in data
+    aapl_data = next(item for item in data["analysis"] if item["ticker"] == "AAPL")
+    assert "news_price_correlation" in aapl_data
+    # Should calculate a correlation, or default to 0.0 if not enough overlap with hist data
+    assert isinstance(aapl_data["news_price_correlation"], float)

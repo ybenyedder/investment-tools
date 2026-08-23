@@ -55,27 +55,36 @@ def fetch_recent_news(ticker: str, name: str, limit: int = 5):
         docs = results['documents'][0]
         ids = results['ids'][0]
         distances = results['distances'][0]
+        metadatas = results.get('metadatas', [[]])[0] if results.get('metadatas') else []
         
         for idx in range(len(docs)):
-            # Distances in Chroma using cosine/L2 are smaller for better matches. 
-            # Filter out very bad matches if needed.
+            meta = metadatas[idx] if idx < len(metadatas) and metadatas[idx] is not None else {}
+            ts_str = meta.get("timestamp")
+            if ts_str:
+                try:
+                    ts = pd.to_datetime(ts_str)
+                except Exception:
+                    ts = datetime.utcnow() - timedelta(hours=idx*12)
+            else:
+                ts = datetime.utcnow() - timedelta(hours=idx*12)
+            
             news_items.append({
                 "id": ids[idx],
                 "text": docs[idx],
                 "distance": distances[idx],
-                "timestamp": datetime.utcnow() - timedelta(hours=idx*12) # Mock timestamp if not in metadata, ideally we get this from Mongo or Chroma metadata
+                "timestamp": ts
             })
     
     return news_items
 
-def calculate_news_impact(ticker: str, name: str):
+def calculate_news_impact(ticker: str, name: str, hist_data: pd.Series = None):
     """
     Returns a score indicating the anticipated stock impact (-1.0 to 1.0) 
     based on real-time news in the WhatsApp DB.
     """
-    news_items = fetch_recent_news(ticker, name)
+    news_items = fetch_recent_news(ticker, name, limit=50)
     if not news_items:
-        return {"impact_score": 0.0, "news_count": 0, "latest_news": "No recent WhatsApp news", "news_list": []}
+        return {"impact_score": 0.0, "news_count": 0, "latest_news": "No recent WhatsApp news", "news_list": [], "price_correlation": 0.0}
 
     # Dummy/heuristic sentiment scoring for proof-of-concept
     # A real system would use a LLM or FinBERT here to score the text.
@@ -83,6 +92,7 @@ def calculate_news_impact(ticker: str, name: str):
     bearish_keywords = ['drop', 'fall', 'sell', 'loss', 'miss', 'down', 'lawsuit', 'resign', 'crash']
     
     total_score = 0
+    daily_scores = {}
     for item in news_items:
         text = item['text'].lower()
         score = 0
@@ -93,15 +103,37 @@ def calculate_news_impact(ticker: str, name: str):
         
         # Weight by how semantically close it was (lower distance is better)
         weight = max(0.1, 2.0 - item['distance'])
-        total_score += score * weight
+        weighted_score = score * weight
+        total_score += weighted_score
+        
+        item_date = item['timestamp'].date() if isinstance(item['timestamp'], datetime) else pd.to_datetime(item['timestamp']).date()
+        daily_scores[item_date] = daily_scores.get(item_date, 0) + weighted_score
 
     # Normalize score between -1 and 1
     normalized_score = max(-1.0, min(1.0, total_score / max(1, len(news_items))))
     
+    price_correlation = 0.0
+    if hist_data is not None and not hist_data.empty and len(daily_scores) > 1:
+        # Align daily_scores with hist_data returns
+        returns = hist_data.pct_change().dropna()
+        if hasattr(returns.index, 'date'):
+            returns.index = returns.index.date
+        elif hasattr(returns.index, 'dt'):
+            returns.index = returns.index.dt.date
+            
+        df = pd.DataFrame({"score": daily_scores})
+        df["return"] = returns
+        df = df.dropna()
+        if len(df) > 1:
+            price_correlation = float(df["score"].corr(df["return"]))
+            if pd.isna(price_correlation):
+                price_correlation = 0.0
+
     return {
         "impact_score": normalized_score,
         "news_count": len(news_items),
         "latest_news": news_items[0]['text'][:100] + "..." if news_items else "N/A",
-        "news_list": [item['text'] for item in news_items]
+        "news_list": [item['text'] for item in news_items[:5]],
+        "price_correlation": price_correlation
     }
 
