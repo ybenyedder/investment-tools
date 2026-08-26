@@ -803,3 +803,45 @@ def _summary_text(score: int, view: dict) -> str:
         f"Portefeuille {trend} ({pnl:+,.2f} $, soit {ret:+.2f}% depuis l'origine) — {qual}. "
         f"Valeur totale : {view['total_value']:,.2f} $ dont {view['cash']:,.2f} $ de liquidités."
     )
+
+def optimize_portfolio(user=Depends(get_current_user)):
+    """Automated persona that optimizes the portfolio by liquidating underperforming assets and buying top ones."""
+    init_db()
+    view = build_portfolio_view(user)
+    
+    positions = view["positions"]
+    
+    actions_taken = []
+    
+    # 1. Sell underperformers (pnl_pct < -5.0)
+    for p in positions:
+        if p["pnl_pct"] < -5.0:
+            try:
+                req = TradeRequest(ticker=p["ticker"], side="SELL", quantity=p["quantity"])
+                res = execute_trade(req, user)
+                actions_taken.append(f"Vendu {p['quantity']} de {p['ticker']} (Stop loss)")
+            except Exception as e:
+                pass
+
+    # Refetch cash after selling
+    view = build_portfolio_view(user)
+    cash = view["cash"]
+
+    # 2. Reinvest cash in SPY or QQQ if abundant
+    if cash > 1000:
+        for ticker in ["QQQ", "SPY"]:
+            try:
+                price = get_market_price(ticker)
+                qty = math.floor((cash * 0.4) / price)
+                if qty > 0:
+                    req = TradeRequest(ticker=ticker, side="BUY", quantity=qty)
+                    res = execute_trade(req, user)
+                    actions_taken.append(f"Acheté {qty} de {ticker} (Réinvestissement optimal)")
+                    cash -= (qty * price)
+            except Exception as e:
+                pass
+                
+    if not actions_taken:
+        actions_taken.append("Aucune optimisation nécessaire.")
+        
+    return {"status": "ok", "actions": actions_taken}

@@ -5,6 +5,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import AuthModal from '@/components/AuthModal';
 import TradeModal from '@/components/TradeModal';
 import PortfolioPanel from '@/components/PortfolioPanel';
+import { useLanguage } from '@/components/LanguageContext';
 
 export default function Home() {
   const [data, setData] = useState(null);
@@ -203,33 +204,45 @@ export default function Home() {
     }
   };
 
+  const { lang, setLang, t } = useLanguage();
+
   return (
     <main className="p-8 font-sans bg-white min-h-screen text-slate-900">
       {/* Header + Auth bar */}
       <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
-        <h1 className="text-4xl font-bold">Investment Analysis Dashboard</h1>
+        <h1 className="text-4xl font-bold">{t('dashboard')}</h1>
         <div className="flex items-center gap-3">
+          <select 
+            value={lang} 
+            onChange={(e) => setLang(e.target.value)}
+            className="py-1 px-2 border border-slate-300 rounded text-sm bg-white cursor-pointer"
+          >
+            <option value="en">English</option>
+            <option value="fr">Français</option>
+            <option value="ar">العربية</option>
+            <option value="zh">中文</option>
+          </select>
           {authToken ? (
             <>
               <span className="text-sm text-slate-600">
                 <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-2 align-middle"></span>
                 {authUser?.name || authUser?.email}
-                <span className="text-slate-400 ml-2">({new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(cash)} de cash)</span>
+                <span className="text-slate-400 ml-2">({new Intl.NumberFormat(lang === 'fr' ? 'fr-FR' : 'en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(cash)} {t('cash')})</span>
               </span>
               <button
                 onClick={() => setShowPortfolio(true)}
                 className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-md shadow-sm transition-colors cursor-pointer"
               >
-                💼 Mon Portefeuille
+                {t('myPortfolio')}
               </button>
-              <button onClick={logout} className="text-sm text-slate-500 hover:text-slate-800 cursor-pointer">Déconnexion</button>
+              <button onClick={logout} className="text-sm text-slate-500 hover:text-slate-800 cursor-pointer">{t('logout')}</button>
             </>
           ) : (
             <button
               onClick={() => setShowAuth(true)}
               className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-md shadow-sm transition-colors cursor-pointer"
             >
-              🔐 Se connecter / S&apos;enregistrer
+              {t('login')}
             </button>
           )}
         </div>
@@ -332,7 +345,7 @@ export default function Home() {
           disabled={loading}
           className="px-6 py-3 bg-blue-600 hover:bg-blue-700 transition-colors text-white font-medium rounded-md cursor-pointer disabled:bg-slate-300 disabled:text-slate-500 disabled:cursor-not-allowed shadow-sm"
         >
-          {loading ? 'Analyzing...' : 'Run Analysis'}
+          {loading ? t('loading') : t('runAnalysis')}
         </button>
       </div>
       

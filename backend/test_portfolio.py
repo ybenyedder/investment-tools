@@ -254,3 +254,49 @@ class TestAdvice:
     def test_advice_requires_auth(self):
         res = client.get("/api/portfolio/advice")
         assert res.status_code == 401
+
+# ---------------------------------------------------------------------------
+# Optimization (Automated Persona)
+# ---------------------------------------------------------------------------
+
+class TestAutomatedInvestment:
+    def test_optimize_portfolio(self):
+        token = _register().json()["token"]
+        
+        # Setup: Buy AAPL at 100, wait, price drops to 90 (10% loss)
+        client.post("/api/portfolio/trade", json={"ticker": "AAPL", "side": "buy", "quantity": 10, "price": 100.0}, headers=_auth_headers(token))
+        
+        def fake_get_market_price(ticker):
+            prices = {"AAPL": 90.0, "QQQ": 300.0, "SPY": 400.0}
+            return prices.get(ticker, 100.0)
+            
+        def fake_get_current_prices(tickers):
+            prices = {"AAPL": 90.0, "QQQ": 300.0, "SPY": 400.0}
+            return {t: prices.get(t, 100.0) for t in tickers}
+            
+        with patch.object(portfolio, "get_current_prices", side_effect=fake_get_current_prices), \
+             patch.object(portfolio, "get_market_price", side_effect=fake_get_market_price), \
+             patch.object(portfolio, "get_tickers_meta", return_value={"AAPL": {"name": "Apple"}, "QQQ": {"name": "Invesco"}, "SPY": {"name": "SPDR"}}):
+            
+            # Verify the view sees the loss
+            view_before = client.get("/api/portfolio", headers=_auth_headers(token)).json()
+            assert view_before["positions"][0]["pnl_pct"] == -10.0
+            
+            # Run the optimizer
+            res = client.post("/api/portfolio/optimize", headers=_auth_headers(token))
+            assert res.status_code == 200
+            actions = res.json()["actions"]
+            
+            # AAPL should be sold, QQQ and SPY bought
+            assert any("Vendu" in action and "AAPL" in action for action in actions)
+            assert any("Acheté" in action and "QQQ" in action for action in actions)
+            assert any("Acheté" in action and "SPY" in action for action in actions)
+            
+            view_after = client.get("/api/portfolio", headers=_auth_headers(token)).json()
+            
+            # Verify AAPL is gone
+            assert not any(p["ticker"] == "AAPL" for p in view_after["positions"])
+            
+            # Verify QQQ and SPY were purchased
+            assert any(p["ticker"] == "QQQ" for p in view_after["positions"])
+            assert any(p["ticker"] == "SPY" for p in view_after["positions"])

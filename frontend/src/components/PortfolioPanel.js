@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { useLanguage } from './LanguageContext';
 
-const usd = (v) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(v || 0);
+const usd = (v, lang = 'en-US') => new Intl.NumberFormat(lang === 'fr' ? 'fr-FR' : 'en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(v || 0);
 const pct = (v) => `${(v || 0) > 0 ? '+' : ''}${(v || 0).toFixed(2)}%`;
 
 async function fetchPortfolioView(token) {
@@ -14,6 +15,7 @@ async function fetchPortfolioView(token) {
 }
 
 export default function PortfolioPanel({ token, onClose, onCashUpdate, onTrade }) {
+  const { lang, t } = useLanguage();
   const [view, setView] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('positions');
@@ -23,10 +25,10 @@ export default function PortfolioPanel({ token, onClose, onCashUpdate, onTrade }
   const [adviceLoading, setAdviceLoading] = useState(false);
   const [history, setHistory] = useState(null);
   const [error, setError] = useState('');
+  const [optimizing, setOptimizing] = useState(false);
 
   const authHeaders = { 'Authorization': `Bearer ${token}` };
 
-  // All state updates happen in async callbacks so the effect stays lint-clean.
   const refresh = () => {
     fetchPortfolioView(token)
       .then(json => { setView(json); onCashUpdate?.(json.cash); })
@@ -34,7 +36,6 @@ export default function PortfolioPanel({ token, onClose, onCashUpdate, onTrade }
       .finally(() => setLoading(false));
   };
 
-  // Initial load
   useEffect(() => {
     fetchPortfolioView(token)
       .then(json => { setView(json); onCashUpdate?.(json.cash); })
@@ -87,6 +88,22 @@ export default function PortfolioPanel({ token, onClose, onCashUpdate, onTrade }
     setProjection(null); setAdvice(null);
     refresh();
   };
+  
+  const optimizePortfolio = async () => {
+    setOptimizing(true);
+    try {
+      const res = await fetch('/api/portfolio/optimize', { method: 'POST', headers: authHeaders });
+      const json = await res.json();
+      if (json.actions && json.actions.length > 0) {
+        alert("Optimisation terminée:\n" + json.actions.join('\n'));
+      }
+      refresh();
+    } catch {
+      setError('Erreur d\'optimisation.');
+    } finally {
+      setOptimizing(false);
+    }
+  };
 
   const projChartData = projection
     ? projection.chart.months.map((m, i) => ({
@@ -112,26 +129,28 @@ export default function PortfolioPanel({ token, onClose, onCashUpdate, onTrade }
         <div className="p-6 border-b border-slate-200 bg-gradient-to-r from-slate-800 to-slate-900 rounded-t-2xl text-white">
           <div className="flex justify-between items-start">
             <div>
-              <h2 className="text-3xl font-bold">Mon Portefeuille</h2>
+              <h2 className="text-3xl font-bold">{t('myPortfolio')}</h2>
               {view && (
                 <div className="flex flex-wrap gap-x-8 gap-y-1 mt-3">
-                  <div><span className="text-slate-400 text-sm">Valeur totale </span><span className="text-2xl font-bold">{usd(view.total_value)}</span></div>
-                  <div><span className="text-slate-400 text-sm">Investi </span><span className="font-semibold">{usd(view.invested)}</span></div>
-                  <div><span className="text-slate-400 text-sm">Cash </span><span className="font-semibold">{usd(view.cash)}</span></div>
+                  <div><span className="text-slate-400 text-sm">{t('totalValue')} </span><span className="text-2xl font-bold">{usd(view.total_value, lang)}</span></div>
+                  <div><span className="text-slate-400 text-sm">{t('invested')} </span><span className="font-semibold">{usd(view.invested, lang)}</span></div>
+                  <div><span className="text-slate-400 text-sm">{t('cash')} </span><span className="font-semibold">{usd(view.cash, lang)}</span></div>
                   <div>
                     <span className="text-slate-400 text-sm">P/L total </span>
                     <span className={`font-bold ${view.total_pnl >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                      {view.total_pnl >= 0 ? '+' : ''}{usd(view.total_pnl)} ({pct(view.total_return_pct)})
+                      {view.total_pnl >= 0 ? '+' : ''}{usd(view.total_pnl, lang)} ({pct(view.total_return_pct)})
                     </span>
                   </div>
                 </div>
               )}
             </div>
             <div className="flex gap-2">
+              <button onClick={optimizePortfolio} disabled={optimizing}
+                className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-sm cursor-pointer">{t('optimizeBtn')}</button>
               <button onClick={() => { setLoading(true); refresh(); }} disabled={loading}
-                className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-sm cursor-pointer">↻ Actualiser</button>
+                className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-sm cursor-pointer">{t('refresh')}</button>
               <button onClick={resetPortfolio}
-                className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-sm cursor-pointer">Réinitialiser</button>
+                className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-sm cursor-pointer">{t('reset')}</button>
               <button onClick={onClose} className="p-2 text-2xl font-bold text-slate-400 hover:text-white cursor-pointer">&times;</button>
             </div>
           </div>
@@ -140,10 +159,10 @@ export default function PortfolioPanel({ token, onClose, onCashUpdate, onTrade }
         {/* Tabs */}
         <div className="flex border-b border-slate-200 bg-slate-50">
           {[
-            ['positions', `Positions${view ? ` (${view.positions.length})` : ''}`],
-            ['projection', 'Projection 5 ans'],
-            ['advice', 'Conseils'],
-            ['history', 'Historique']
+            ['positions', `${t('positions')}${view ? ` (${view.positions.length})` : ''}`],
+            ['projection', t('projection')],
+            ['advice', t('advice')],
+            ['history', t('history')]
           ].map(([key, label]) => (
             <button key={key} onClick={() => {
               setTab(key);
@@ -159,7 +178,7 @@ export default function PortfolioPanel({ token, onClose, onCashUpdate, onTrade }
         <div className="p-6 overflow-y-auto flex-1 bg-slate-50">
           {error && <div className="mb-4 p-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm">{error}</div>}
 
-          {loading && !view && <div className="text-center text-slate-500 py-12">Chargement du portefeuille…</div>}
+          {loading && !view && <div className="text-center text-slate-500 py-12">{t('loading')}</div>}
 
           {/* -------- Positions -------- */}
           {view && tab === 'positions' && (
@@ -206,9 +225,9 @@ export default function PortfolioPanel({ token, onClose, onCashUpdate, onTrade }
                         </td>
                         <td className="p-3 text-right space-x-1">
                           <button onClick={() => onTrade?.({ ticker: p.ticker, name: p.name, price: p.current_price, side: 'buy' })}
-                            className="px-3 py-1.5 rounded-md bg-emerald-100 text-emerald-800 hover:bg-emerald-200 text-xs font-bold cursor-pointer">+ Acheter</button>
+                            className="px-3 py-1.5 rounded-md bg-emerald-100 text-emerald-800 hover:bg-emerald-200 text-xs font-bold cursor-pointer">+ {t('buy')}</button>
                           <button onClick={() => onTrade?.({ ticker: p.ticker, name: p.name, price: p.current_price, side: 'sell' })}
-                            className="px-3 py-1.5 rounded-md bg-red-100 text-red-800 hover:bg-red-200 text-xs font-bold cursor-pointer">Vendre</button>
+                            className="px-3 py-1.5 rounded-md bg-red-100 text-red-800 hover:bg-red-200 text-xs font-bold cursor-pointer">{t('sell')}</button>
                         </td>
                       </tr>
                     ))}

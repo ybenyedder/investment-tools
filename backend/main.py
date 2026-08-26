@@ -139,6 +139,10 @@ def portfolio_projection(req: ProjectionRequest, user=Depends(get_current_user))
 def portfolio_advice(user=Depends(get_current_user)):
     return portfolio.compute_advice(user)
 
+@app.post("/api/portfolio/optimize")
+def portfolio_optimize(user=Depends(get_current_user)):
+    return portfolio.optimize_portfolio(user)
+
 def get_historical_data(tickers: List[str], period: str = "10y"):
     """Fetch historical closing prices."""
     if not tickers:
