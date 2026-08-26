@@ -419,3 +419,35 @@ def test_analyze_assets_news_price_correlation(mock_fetch_news):
     assert "news_price_correlation" in aapl_data
     # Should calculate a correlation, or default to 0.0 if not enough overlap with hist data
     assert isinstance(aapl_data["news_price_correlation"], float)
+
+@patch("news_correlation.fetch_recent_news")
+def test_get_company_articles(mock_fetch_news):
+    from datetime import datetime, timezone
+    
+    # Mock some news items
+    now = datetime.now(timezone.utc)
+    mock_fetch_news.return_value = [
+        {"id": "1", "text": "Apple announces new iPhone", "distance": 0.2, "timestamp": now},
+        {"id": "2", "text": "Apple profits surge", "distance": 0.4, "timestamp": now.isoformat()}
+    ]
+
+    response = client.post("/api/company/articles", json={"ticker": "AAPL", "name": "Apple"})
+    assert response.status_code == 200
+    data = response.json()
+    
+    assert data["status"] == "ok"
+    assert len(data["articles"]) == 2
+    assert data["articles"][0]["text"] == "Apple announces new iPhone"
+    
+    # Verify timestamp serialization handling
+    assert isinstance(data["articles"][0]["timestamp"], str)
+    assert isinstance(data["articles"][1]["timestamp"], str)
+
+@patch("news_correlation.fetch_recent_news")
+def test_get_company_articles_empty(mock_fetch_news):
+    mock_fetch_news.return_value = []
+    response = client.post("/api/company/articles", json={"ticker": "AAPL", "name": "Apple"})
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "no_data"
+    assert data["articles"] == []
