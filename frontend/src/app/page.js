@@ -21,6 +21,8 @@ export default function Home() {
   const [llmProvider, setLlmProvider] = useState("local");
   const [documentInsights, setDocumentInsights] = useState(null);
   const [loadingInsights, setLoadingInsights] = useState(false);
+  const [companyArticles, setCompanyArticles] = useState(null);
+  const [loadingArticles, setLoadingArticles] = useState(false);
   const [llmApiKey, setLlmApiKey] = useState("");
 
   // Search State
@@ -145,6 +147,27 @@ export default function Home() {
       alert('Failed to generate insights.');
     }
     setLoadingInsights(false);
+  };
+
+  const fetchCompanyArticles = async (ticker, name) => {
+    setLoadingArticles(true);
+    try {
+      const response = await fetch('/api/company/articles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticker, name })
+      });
+      const resData = await response.json();
+      if (resData.status === 'ok' && resData.articles && resData.articles.length > 0) {
+        setCompanyArticles(resData.articles);
+      } else {
+        alert("No associated magazine articles found.");
+      }
+    } catch (error) {
+      console.error('Error fetching articles:', error);
+      alert('Failed to retrieve articles.');
+    }
+    setLoadingArticles(false);
   };
 
   const analyze = async () => {
@@ -480,7 +503,7 @@ export default function Home() {
               </thead>
               <tbody className="text-slate-600">
                 {data.top_10.map((item, i) => (
-                  <tr key={i} onClick={() => { setSelectedCompanyInfo(item); setDocumentInsights(null); }} className="border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer">
+                  <tr key={i} onClick={() => { setSelectedCompanyInfo(item); setDocumentInsights(null); setCompanyArticles(null); }} className="border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer">
                     <td className="p-3">
                       <strong className="text-slate-900 text-base">{item.ticker}</strong><br/>
                       <small className="text-slate-500">{item.name}</small>
@@ -730,8 +753,39 @@ export default function Home() {
                       )}
                     </div>
                   </div>
+
+                  {/* Associated Magazine Articles */}
+                  <div className="bg-sky-50/50 rounded-xl p-5 border border-sky-100 mt-4">
+                    <div className="flex justify-between items-center mb-4 border-b border-sky-100 pb-2">
+                      <h3 className="text-lg font-bold text-sky-900">Associated Magazine Articles</h3>
+                      <button 
+                        onClick={() => fetchCompanyArticles(selectedCompanyInfo.ticker, selectedCompanyInfo.name)}
+                        disabled={loadingArticles}
+                        className="px-3 py-1 bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold rounded shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
+                      >
+                        {loadingArticles ? 'Loading...' : 'Read Articles'}
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      {companyArticles ? (
+                        <div className="max-h-[300px] overflow-y-auto space-y-3">
+                          {companyArticles.map((article, idx) => (
+                            <div key={idx} className="bg-white p-4 rounded-lg shadow-sm border border-sky-100 text-sm text-slate-700 leading-relaxed whitespace-pre-line">
+                              <div className="text-xs text-sky-600 font-bold mb-2">Timestamp: {new Date(article.timestamp).toLocaleString()}</div>
+                              {article.text}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="bg-white p-4 rounded-lg shadow-sm border border-sky-100 text-sm text-slate-500 italic text-center">
+                          Click read to fetch associated raw magazine articles from the database.
+                        </div>
+                      )}
+                    </div>
+                  </div>
                   
-                  <div className="bg-slate-50 rounded-xl p-5 border border-slate-200">
+                  <div className="bg-slate-50 rounded-xl p-5 border border-slate-200 mt-4">
                     <h3 className="text-lg font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">Fundamentals ($B)</h3>
                     <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
                       <div className="text-slate-500">SOM / SAM / TAM</div>

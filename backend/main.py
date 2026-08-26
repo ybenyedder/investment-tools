@@ -768,3 +768,20 @@ def get_company_insights(ticker: str):
         doc.pop("_id", None)
         results.append(doc)
     return {"ticker": ticker, "history": results}
+
+@app.post("/api/company/articles")
+@limiter.limit("20/minute")
+def get_company_articles(req: InsightRequest, request: Request):
+    from news_correlation import fetch_recent_news
+    news_items = fetch_recent_news(req.ticker, req.name, limit=20)
+    
+    if not news_items:
+        return {"status": "no_data", "articles": []}
+        
+    for item in news_items:
+        if hasattr(item['timestamp'], 'isoformat'):
+            item['timestamp'] = item['timestamp'].isoformat()
+        else:
+            item['timestamp'] = str(item['timestamp'])
+            
+    return {"status": "ok", "articles": news_items}
