@@ -38,8 +38,14 @@ def process_pdf(file_path):
     try:
         doc = fitz.open(file_path)
         text = ""
-        for page in doc:
+        for i, page in enumerate(doc):
+            if i > 100: # Limit to 100 pages to prevent OOM
+                print(f"Warning: PDF truncated at 100 pages for {file_path}")
+                break
             text += page.get_text()
+            if len(text) > 500000: # 500KB character limit
+                print(f"Warning: PDF truncated at 500,000 characters for {file_path}")
+                break
     except Exception as e:
         print(f"Failed to read PDF {file_path}: {e}")
         return []
@@ -85,10 +91,18 @@ def run_worker():
             if msg and 'media' in msg and 'filePath' in msg['media']:
                 file_path = msg['media']['filePath']
                 
-                # Remap whatsapp-bot path to backend path
-                # whatsapp-bot saves as /usr/src/app/downloads/...
-                # backend mounts it at /app/downloads/...
-                local_path = file_path.replace("/usr/src/app/downloads", "/app/downloads")
+                base_dir = "/app/downloads"
+                # Ensure the path is strictly inside downloads
+                if not file_path.startswith("/usr/src/app/downloads/"):
+                    print("Error: Invalid base path")
+                    continue
+                    
+                rel_path = file_path.replace("/usr/src/app/downloads/", "")
+                local_path = os.path.abspath(os.path.join(base_dir, rel_path))
+                
+                if not local_path.startswith(base_dir):
+                    print(f"Security error: Path traversal attempt {file_path}")
+                    continue
                 
                 print(f"Processing PDF: {local_path}")
                 if os.path.exists(local_path):

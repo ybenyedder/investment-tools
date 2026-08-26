@@ -165,16 +165,21 @@ def _get_mongo_db():
         return _mongo_client.get_default_database()
     return _mongo_client.get_database("investment_tools")
 
+import asyncio
+
 @app.post("/api/analyze")
 @limiter.limit("10/minute")
-def analyze_assets(
+async def analyze_assets(
     request: Request,
     tickers: List[str] = Query(default=["AAPL", "MSFT"]),
     quant_method: str = Query(default="sharpe", description="Quantitative method to rank by: sharpe, sortino, treynor")
 ):
     """Analyze a list of tickers, calculating expected returns, risk, and analyst targets."""
-    # 1. Fetch 10-year historical data
-    hist_data = get_historical_data(tickers, period="10y")
+    if len(tickers) > 10:
+        raise HTTPException(status_code=400, detail="Maximum 10 tickers allowed per analysis")
+    
+    # 1. Fetch 10-year historical data (blocking call moved to thread)
+    hist_data = await asyncio.to_thread(get_historical_data, tickers, "10y")
     if hist_data.empty:
         return {"error": "No data found for provided tickers."}
     
@@ -192,22 +197,26 @@ def analyze_assets(
     # 3. Gather Analyst Estimates & Basic WACC Components (Proxy)
     results = []
     
-    for ticker in tickers:
-        # A single broken/delisted ticker must not fail the whole batch
+    def fetch_all_data(t):
         try:
-            yf_ticker = yf.Ticker(ticker)
-            ticker_info = yf_ticker.info or {}
+            yf_ticker = yf.Ticker(t)
+            info = yf_ticker.info or {}
+            income = yf_ticker.income_stmt
+            bs = yf_ticker.balance_sheet
+            cf = yf_ticker.cashflow
+            return info, income, bs, cf
         except Exception:
-            ticker_info = {}
+            return {}, pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+            
+    for ticker in tickers:
+        ticker_info, income, bs, cf = await asyncio.to_thread(fetch_all_data, ticker)
         ticker_hist = hist_data[ticker].dropna() if ticker in hist_data.columns else pd.Series()
         
         # Extract Historical Financials
         try:
-            income = yf_ticker.income_stmt
-            bs = yf_ticker.balance_sheet
-            cf = yf_ticker.cashflow
-            
             def extract_metric(df, possible_names):
+                if df is None or df.empty:
+                    return pd.Series(dtype=float)
                 for name in possible_names:
                     if name in df.index:
                         return df.loc[name].dropna()

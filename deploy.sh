@@ -25,7 +25,8 @@ else
         echo "sshpass is not installed. Installing..."
         sudo apt-get update && sudo apt-get install -y sshpass
     fi
-    run_remote() { sshpass -p "$PASSWORD" ssh -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" "$1"; }
+    export SSHPASS="$PASSWORD"
+    run_remote() { sshpass -e ssh -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_IP" "$1"; }
     RSYNC_EH="ssh -o StrictHostKeyChecking=no"
 fi
 
@@ -44,7 +45,7 @@ if [ -n "$SSH_KEY" ]; then
         --exclude 'chroma_db' --exclude 'backend-data' --exclude 'backend/models' \
         ./ "$SERVER_USER@$SERVER_IP:$PROJECT_DIR/"
 else
-    sshpass -p "$PASSWORD" rsync -avz -e "$RSYNC_EH" \
+    sshpass -e rsync -avz -e "$RSYNC_EH" \
         --exclude '.git' --exclude 'node_modules' --exclude 'venv' --exclude '.next' \
         --exclude '__pycache__' --exclude '*.db' \
         --exclude 'chroma_db' --exclude 'backend-data' --exclude 'backend/models' \
