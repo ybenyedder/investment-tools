@@ -594,11 +594,11 @@ def chat(req_obj: ChatRequest, request: Request):
         
         # Build prompt with context
         context_str = ""
-        if request.context:
+        if req_obj.context:
             import json
             # Filter context to essential fields to prevent exceeding LLM context window limit
             essential_keys = ["ticker", "name", "current_price", "sharpe_ratio", "news_impact_score", "news_price_correlation", "analyst_target_price", "rl_action", "tam_b", "sam_b", "som_b", "peg_ratio", "kl_divergence", "log_likelihood", "skewness", "kurtosis", "var_95", "max_drawdown", "revenue_volatility", "net_income_volatility", "opex_volatility", "capex_volatility", "net_financial_position_volatility"]
-            filtered_context = [{k: item[k] for k in essential_keys if k in item} for item in request.context[:5]]
+            filtered_context = [{k: item[k] for k in essential_keys if k in item} for item in req_obj.context[:5]]
             context_json = json.dumps(filtered_context)
             # Log the full JSON to the backend console for debugging (unbuffered)
             print(f"--- INCOMING CONTEXT JSON ---\n{context_json}\n-----------------------------", flush=True)
