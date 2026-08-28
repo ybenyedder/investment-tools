@@ -639,9 +639,9 @@ export default function Home() {
                   </ResponsiveContainer>
                 </div>
                 <div className="flex gap-4 justify-center mt-4 text-xs font-semibold">
-                  <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-emerald-400"></div> Great (Sharpe > 1)</span>
-                  <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-blue-400"></div> Good (Sharpe > 0.5)</span>
-                  <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-red-400"></div> Poor (Sharpe < 0.5)</span>
+                  <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-emerald-400"></div> Great (Sharpe &gt; 1)</span>
+                  <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-blue-400"></div> Good (Sharpe &gt; 0.5)</span>
+                  <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-red-400"></div> Poor (Sharpe &lt; 0.5)</span>
                 </div>
               </div>
 
