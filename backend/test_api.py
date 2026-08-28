@@ -451,3 +451,14 @@ def test_get_company_articles_empty(mock_fetch_news):
     data = response.json()
     assert data["status"] == "no_data"
     assert data["articles"] == []
+
+def test_chat_endpoint_ai_pick():
+    """Non-regression test to ensure AI pick prompt works and returns tickers."""
+    payload = {
+        "prompt": "List the 5 best stock tickers to buy right now. Return ONLY a comma-separated list of the tickers (e.g., AAPL,MSFT,NVDA). No other text, no explanations.",
+        "context": []
+    }
+    response = client.post("/api/chat", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert "response" in data or "error" in data

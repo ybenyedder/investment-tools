@@ -10,6 +10,7 @@ import { useLanguage } from '@/components/LanguageContext';
 export default function Home() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [aiSelectLoading, setAiSelectLoading] = useState(false);
   const [tickers, setTickers] = useState("AAPL,MSFT,TSLA,SPY,GLD");
   const [quantMethod, setQuantMethod] = useState("sharpe");
   const [stochasticModel, setStochasticModel] = useState("bs");
@@ -211,6 +212,41 @@ export default function Home() {
     setChatLoading(false);
   };
 
+  const getBestStocksFromLLM = async () => {
+    setAiSelectLoading(true);
+    try {
+      const apiUrl = "";
+      const res = await fetch(`${apiUrl}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          prompt: "List the 5 best stock tickers to buy right now. Return ONLY a comma-separated list of the tickers (e.g., AAPL,MSFT,NVDA). No other text, no explanations.", 
+          context: [],
+          provider: llmProvider,
+          api_key: llmApiKey
+        })
+      });
+      const json = await res.json();
+      if (json.error) {
+         alert("AI Error: " + json.error);
+      } else if (json.response) {
+         const rawText = json.response;
+         // Extract uppercase words of length 1-6 as tickers
+         const match = rawText.match(/[A-Z]{1,6}/g);
+         if (match) {
+             const uniqueTickers = [...new Set(match)].slice(0, 8);
+             setTickers(uniqueTickers.join(','));
+         } else {
+             setTickers(rawText);
+         }
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to connect to LLM for stock suggestions.");
+    }
+    setAiSelectLoading(false);
+  };
+
   const handleCompanySelect = (e) => {
     const selected = e.target.value;
     if (selected) {
@@ -345,6 +381,14 @@ export default function Home() {
             className="flex-1 p-3 rounded-md border border-slate-300 bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
             placeholder="AAPL, MSFT, TSLA..."
           />
+          <button 
+             onClick={getBestStocksFromLLM}
+             disabled={aiSelectLoading}
+             className="px-4 py-3 bg-purple-600 hover:bg-purple-700 transition-colors text-white font-medium rounded-md cursor-pointer disabled:bg-purple-300 disabled:cursor-not-allowed shadow-sm flex items-center justify-center whitespace-nowrap"
+             title="Use AI to automatically pick the best stocks to analyze"
+          >
+             {aiSelectLoading ? 'Thinking...' : '✨ AI Pick'}
+          </button>
           <select 
             value={quantMethod} 
             onChange={(e) => setQuantMethod(e.target.value)}
