@@ -55,7 +55,20 @@ class AuditMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         if request.url.path.startswith("/api/"):
             ip = request.client.host if request.client else "unknown"
-            portfolio.log_event(ip, "CONNECTION", endpoint=request.url.path)
+            user_email = ""
+            auth_header = request.headers.get("Authorization")
+            if auth_header and auth_header.startswith("Bearer "):
+                token = auth_header.split(" ")[1]
+                try:
+                    user_id = portfolio.verify_token(token)
+                    if user_id:
+                        with portfolio._connect() as conn:
+                            row = conn.execute("SELECT email FROM users WHERE id = ?", (user_id,)).fetchone()
+                            if row:
+                                user_email = row[0]
+                except Exception:
+                    pass
+            portfolio.log_event(ip, "CONNECTION", user_email=user_email, endpoint=request.url.path)
         return await call_next(request)
 
 app.add_middleware(AuditMiddleware)

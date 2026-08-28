@@ -141,10 +141,39 @@ def get_admin_stats(user):
         total_connections = conn.execute("SELECT COUNT(*) FROM audit_logs WHERE event_type = 'CONNECTION'").fetchone()[0]
         total_logins = conn.execute("SELECT COUNT(*) FROM audit_logs WHERE event_type = 'LOGIN'").fetchone()[0]
         recent_logs = conn.execute("SELECT * FROM audit_logs ORDER BY id DESC LIMIT 500").fetchall()
+        
+        # Accesses by user
+        accesses_by_user = {}
+        rows = conn.execute("SELECT user_email, COUNT(*) FROM audit_logs WHERE event_type = 'CONNECTION' AND user_email != '' GROUP BY user_email").fetchall()
+        for r in rows:
+            accesses_by_user[r[0]] = r[1]
+            
+        # Gain by user
+        users = conn.execute("SELECT id, email, cash FROM users").fetchall()
+        
+    gain_by_user = {}
+    full_gain = 0.0
+    
+    for u in users:
+        u_dict = {"id": u[0], "email": u[1], "cash": u[2]}
+        try:
+            view = build_portfolio_view(u_dict)
+            total_value = view.get("total_value", 0.0)
+            # Initial cash is 100000, wait, it might vary, but assuming 100000.
+            # actually total_value = cash + invested. So gain = total_value - 100000.
+            gain = total_value - 100000.0
+            gain_by_user[u_dict["email"]] = round(gain, 2)
+            full_gain += gain
+        except Exception as e:
+            gain_by_user[u_dict["email"]] = 0.0
+            
     return {
         "status": "ok",
         "total_connections": total_connections,
         "total_logins": total_logins,
+        "accesses_by_user": accesses_by_user,
+        "gain_by_user": gain_by_user,
+        "full_gain": round(full_gain, 2),
         "forensic_logs": [dict(r) for r in recent_logs]
     }
 
