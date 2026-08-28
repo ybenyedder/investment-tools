@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Bar, Scatter } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Bar, Scatter, ScatterChart, ZAxis, BarChart, PieChart, Pie, Cell } from 'recharts';
 import AuthModal from '@/components/AuthModal';
 import TradeModal from '@/components/TradeModal';
 import PortfolioPanel from '@/components/PortfolioPanel';
@@ -603,6 +603,71 @@ export default function Home() {
               </tbody>
             </table>
           </div>
+
+          
+        {/* POWER BI STYLE ANALYTICS SECTION */}
+        {data && data.top_10 && data.top_10.length > 0 && (
+          <div className="mt-12 mb-8 bg-slate-900 rounded-3xl p-8 border border-slate-800 shadow-2xl text-slate-200">
+            <div className="flex items-center justify-between mb-8 border-b border-slate-800 pb-4">
+              <div>
+                <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-500 tracking-tight flex items-center gap-3">
+                  📊 Power BI Market Analytics
+                </h2>
+                <p className="text-slate-400 mt-2 text-sm">Advanced visual insights for Modern Portfolio Theory</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              
+              {/* Risk vs Return Scatter */}
+              <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest mb-6">Risk vs Expected Return (Efficient Frontier)</h3>
+                <div className="h-80 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                      <XAxis type="number" dataKey="volatility_risk" name="Volatility (Risk)" unit="%" stroke="#64748b" tickFormatter={(v) => (v * 100).toFixed(0)} />
+                      <YAxis type="number" dataKey="historical_expected_return" name="Exp. Return" unit="%" stroke="#64748b" tickFormatter={(v) => (v * 100).toFixed(0)} />
+                      <ZAxis type="category" dataKey="ticker" name="Asset" />
+                      <Tooltip cursor={{strokeDasharray: '3 3'}} contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} />
+                      <Scatter name="Assets" data={data.top_10} fill="#3b82f6">
+                        {data.top_10.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.sharpe_ratio > 1 ? '#34d399' : entry.sharpe_ratio > 0.5 ? '#60a5fa' : '#f87171'} />
+                        ))}
+                      </Scatter>
+                    </ScatterChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex gap-4 justify-center mt-4 text-xs font-semibold">
+                  <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-emerald-400"></div> Great (Sharpe > 1)</span>
+                  <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-blue-400"></div> Good (Sharpe > 0.5)</span>
+                  <span className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-red-400"></div> Poor (Sharpe < 0.5)</span>
+                </div>
+              </div>
+
+              {/* Sharpe Ratio Bar Chart */}
+              <div className="bg-slate-950 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest mb-6">Risk-Adjusted Performance (Sharpe)</h3>
+                <div className="h-80 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={data.top_10} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" horizontal={true} vertical={false} />
+                      <XAxis type="number" stroke="#64748b" />
+                      <YAxis dataKey="ticker" type="category" stroke="#64748b" tick={{fontSize: 12, fontWeight: 'bold'}} />
+                      <Tooltip cursor={{fill: '#1e293b'}} contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '8px' }} />
+                      <Bar dataKey="sharpe_ratio" fill="#818cf8" radius={[0, 4, 4, 0]} name="Sharpe Ratio">
+                        {data.top_10.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={`hsl(${(index * 360) / Math.max(1, data.top_10.length)}, 75%, 60%)`} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
 
           <div className="col-span-1 xl:col-span-1">
             <h2 className="text-2xl mb-4 font-bold text-slate-800 border-b border-slate-200 pb-2">Historical Price Trends (10 Years)</h2>
