@@ -48,6 +48,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from starlette.middleware.base import BaseHTTPMiddleware
+import portfolio
+
+class AuditMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        if request.url.path.startswith("/api/"):
+            ip = request.client.host if request.client else "unknown"
+            portfolio.log_event(ip, "CONNECTION", endpoint=request.url.path)
+        return await call_next(request)
+
+app.add_middleware(AuditMiddleware)
+
+
 # Example universe of assets
 ASSET_UNIVERSE = {
     "US Markets (NASDAQ & NYSE)": {
@@ -108,8 +121,16 @@ def auth_register(req: RegisterRequest):
     return portfolio.register_user(req)
 
 @app.post("/api/auth/login")
-def auth_login(req: LoginRequest):
-    return portfolio.login_user(req)
+def auth_login(req: LoginRequest, request: Request):
+    ip = request.client.host if request.client else "unknown"
+    portfolio.log_event(ip, "LOGIN_ATTEMPT", user_email=req.email, endpoint="/api/auth/login")
+    try:
+        res = portfolio.login_user(req)
+        portfolio.log_event(ip, "LOGIN", user_email=req.email, endpoint="/api/auth/login", details="Success")
+        return res
+    except Exception as e:
+        portfolio.log_event(ip, "LOGIN_FAILED", user_email=req.email, endpoint="/api/auth/login", details=str(e))
+        raise e
 
 @app.get("/api/auth/me")
 def auth_me(user=Depends(get_current_user)):
@@ -785,3 +806,7 @@ def get_company_articles(req: InsightRequest, request: Request):
             item['timestamp'] = str(item['timestamp'])
             
     return {"status": "ok", "articles": news_items}
+
+@app.get("/api/admin/stats")
+def admin_stats(user=Depends(get_current_user)):
+    return portfolio.get_admin_stats(user)

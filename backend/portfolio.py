@@ -93,9 +93,61 @@ def init_db():
                 sector TEXT NOT NULL DEFAULT '',
                 updated_at REAL NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS audit_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL,
+                ip_address TEXT,
+                event_type TEXT NOT NULL,
+                user_email TEXT,
+                endpoint TEXT,
+                details TEXT
+            );
             """
         )
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0")
+        except:
+            pass
+        
+        try:
+            admin_email = "admin@admin.com"
+            # Using basic default password "admin123"
+            import secrets, hashlib
+            salt = secrets.token_bytes(16)
+            digest = hashlib.scrypt(b"admin123", salt=salt, n=16384, r=8, p=1, dklen=32)
+            pwd_hash = f"scrypt$16384$8$1${salt.hex()}${digest.hex()}"
+            conn.execute("INSERT OR IGNORE INTO users (id, email, name, password_hash, is_admin, cash, created_at) VALUES ('admin_0', ?, 'Admin', ?, 1, 100000.0, ?)", (admin_email, pwd_hash, _utcnow_iso()))
+            conn.execute("UPDATE users SET is_admin = 1 WHERE email = ?", (admin_email,))
+        except:
+            pass
+            
         conn.commit()
+
+def log_event(ip_address: str, event_type: str, user_email: str = "", endpoint: str = "", details: str = ""):
+    init_db()
+    with _WRITE_LOCK, _connect() as conn:
+        conn.execute(
+            "INSERT INTO audit_logs (timestamp, ip_address, event_type, user_email, endpoint, details) VALUES (?,?,?,?,?,?)",
+            (_utcnow_iso(), ip_address, event_type, user_email, endpoint, details)
+        )
+        conn.commit()
+
+def get_admin_stats(user):
+    if not dict(user).get("is_admin", 0):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+    init_db()
+    with _connect() as conn:
+        total_connections = conn.execute("SELECT COUNT(*) FROM audit_logs WHERE event_type = 'CONNECTION'").fetchone()[0]
+        total_logins = conn.execute("SELECT COUNT(*) FROM audit_logs WHERE event_type = 'LOGIN'").fetchone()[0]
+        recent_logs = conn.execute("SELECT * FROM audit_logs ORDER BY id DESC LIMIT 500").fetchall()
+    return {
+        "status": "ok",
+        "total_connections": total_connections,
+        "total_logins": total_logins,
+        "forensic_logs": [dict(r) for r in recent_logs]
+    }
+
 
 
 def reset_db_for_tests():
