@@ -87,7 +87,22 @@ export default function AdminDashboard() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
 
-    return { timeSeries, eventPie, topEndpoints };
+    
+    // 4. User Metrics Table
+    const userMetrics = [];
+    if (stats.gain_by_user) {
+      for (const email of Object.keys(stats.gain_by_user)) {
+        userMetrics.push({
+          email: email,
+          gain: stats.gain_by_user[email],
+          accesses: stats.accesses_by_user ? (stats.accesses_by_user[email] || 0) : 0
+        });
+      }
+      userMetrics.sort((a, b) => b.gain - a.gain);
+    }
+    
+    return { timeSeries, eventPie, topEndpoints, userMetrics };
+
   }, [stats]);
 
   const COLORS = ['#34d399', '#60a5fa', '#f87171', '#fbbf24', '#c084fc'];
@@ -123,26 +138,31 @@ export default function AdminDashboard() {
         ) : (
           <div className="space-y-6">
             {/* Top KPIs */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
-                <div className="text-xs text-slate-400 uppercase font-bold tracking-widest mb-1">Total Connections</div>
-                <div className="text-4xl font-black text-white">{stats.total_connections.toLocaleString()}</div>
+                <div className="text-xs text-slate-400 uppercase font-bold tracking-widest mb-1">Platform PNL</div>
+                <div className={`text-3xl font-black ${stats.full_gain >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>${stats.full_gain?.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                <div className="text-xs text-slate-500 mt-2 font-medium">Global net profit</div>
+              </div>
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                <div className="text-xs text-slate-400 uppercase font-bold tracking-widest mb-1">API Traffic</div>
+                <div className="text-3xl font-black text-white">{stats.total_connections?.toLocaleString()}</div>
                 <div className="text-xs text-emerald-400 mt-2 font-medium">↑ Active tracking</div>
               </div>
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
                 <div className="text-xs text-slate-400 uppercase font-bold tracking-widest mb-1">Total Logins</div>
-                <div className="text-4xl font-black text-white">{stats.total_logins.toLocaleString()}</div>
-                <div className="text-xs text-blue-400 mt-2 font-medium">Authentication events</div>
+                <div className="text-3xl font-black text-white">{stats.total_logins?.toLocaleString()}</div>
+                <div className="text-xs text-blue-400 mt-2 font-medium">Auth events</div>
               </div>
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
-                <div className="text-xs text-slate-400 uppercase font-bold tracking-widest mb-1">Logs Captured</div>
-                <div className="text-4xl font-black text-white">{stats.forensic_logs?.length || 0}</div>
-                <div className="text-xs text-purple-400 mt-2 font-medium">In recent memory buffer</div>
+                <div className="text-xs text-slate-400 uppercase font-bold tracking-widest mb-1">Audit Logs</div>
+                <div className="text-3xl font-black text-white">{stats.forensic_logs?.length || 0}</div>
+                <div className="text-xs text-purple-400 mt-2 font-medium">In buffer</div>
               </div>
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
-                <div className="text-xs text-slate-400 uppercase font-bold tracking-widest mb-1">System Status</div>
-                <div className="text-4xl font-black text-emerald-400">HEALTHY</div>
-                <div className="text-xs text-slate-500 mt-2 font-medium">All services operational</div>
+                <div className="text-xs text-slate-400 uppercase font-bold tracking-widest mb-1">Status</div>
+                <div className="text-3xl font-black text-emerald-400 mt-1">HEALTHY</div>
+                <div className="text-xs text-slate-500 mt-2 font-medium">All systems go</div>
               </div>
             </div>
 
@@ -224,6 +244,44 @@ export default function AdminDashboard() {
                 </div>
 
               </div>
+            )}
+
+            
+            {/* User Metrics Table */}
+            {biData && biData.userMetrics && biData.userMetrics.length > 0 && (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl mt-8">
+              <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-900/80">
+                <h2 className="font-bold text-white tracking-wide flex items-center gap-2">
+                  <span className="text-xl">👥</span> User Performance & Access Overview
+                </h2>
+              </div>
+              <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="text-xs text-slate-400 uppercase bg-slate-950 sticky top-0 z-10">
+                    <tr>
+                      <th className="px-5 py-4 font-semibold">User Email</th>
+                      <th className="px-5 py-4 font-semibold text-right">Net Portfolio PNL</th>
+                      <th className="px-5 py-4 font-semibold text-center">Auth API Accesses</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/50">
+                    {biData.userMetrics.map((user, idx) => (
+                      <tr key={idx} className="hover:bg-slate-800/40 transition-colors">
+                        <td className="px-5 py-4 text-slate-300 font-medium">{user.email}</td>
+                        <td className={`px-5 py-4 text-right font-mono font-bold ${user.gain > 0 ? 'text-emerald-400' : user.gain < 0 ? 'text-red-400' : 'text-slate-500'}`}>
+                          {user.gain > 0 ? '+' : ''}${user.gain.toLocaleString(undefined, {minimumFractionDigits: 2})}
+                        </td>
+                        <td className="px-5 py-4 text-center">
+                          <span className="bg-slate-800 text-blue-300 px-3 py-1 rounded-full font-mono text-xs border border-slate-700">
+                            {user.accesses}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
             )}
 
             {/* Raw Data Table */}
