@@ -625,13 +625,13 @@ def chat(req_obj: ChatRequest, request: Request):
             "You can provide information regarding a specific company or domain, summarize complex financial data, and extract valuable insights from the provided context."
         )
         
-        if request.provider == "openai":
+        if req_obj.provider == "openai":
             try:
                 import openai
-                if not request.api_key:
+                if not req_obj.api_key:
                     return {"error": "OpenAI API Key is required for remote usage."}
                 
-                client = openai.OpenAI(api_key=request.api_key)
+                client = openai.OpenAI(api_key=req_obj.api_key)
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[

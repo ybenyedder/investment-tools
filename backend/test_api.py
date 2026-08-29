@@ -462,3 +462,23 @@ def test_chat_endpoint_ai_pick():
     assert response.status_code == 200
     data = response.json()
     assert "response" in data or "error" in data
+
+@patch("main.requests.post")
+def test_chat_endpoint_openai_provider(mock_post):
+    """Test that the chat endpoint correctly handles the OpenAI provider."""
+    payload = {
+        "prompt": "Hello",
+        "provider": "openai",
+        "api_key": "dummy_key"
+    }
+    
+    # We just want to ensure it doesn't crash with AttributeError on `request.provider`
+    # and properly falls into the openai block. Since we don't actually have openai 
+    # mocked out entirely, it will likely return an OpenAI API Error, but NOT an AttributeError.
+    response = client.post("/api/chat", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert "error" in data or "response" in data
+    # Ensure it's not the AttributeError
+    if "error" in data:
+        assert "AttributeError" not in data["error"]
